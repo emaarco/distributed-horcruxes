@@ -1,0 +1,23 @@
+meta {
+  name: Subscribe to newsletter
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8081/api/subscriptions/subscribe
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@mail.com",
+    "name": "John Doe",
+    "newsletterId": "163aef88-cd50-4174-8db8-5d92432cf6c4"
+  }
+}
+
+vars:post-response {
+  subscriptionId: res.body.subscriptionId
+}

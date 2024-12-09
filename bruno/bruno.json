@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "zeebe-newsletter-example",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

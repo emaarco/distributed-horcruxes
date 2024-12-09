@@ -1,0 +1,15 @@
+meta {
+  name: confirm-subscription
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8081/api/subscriptions/confirm/:subscriptionId
+  body: none
+  auth: none
+}
+
+params:path {
+  subscriptionId: {{subscriptionId}}
+}

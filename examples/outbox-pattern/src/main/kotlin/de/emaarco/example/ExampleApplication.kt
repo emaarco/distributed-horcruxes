@@ -1,0 +1,17 @@
+package de.emaarco.example
+
+import io.camunda.zeebe.spring.client.annotation.Deployment
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import org.springframework.scheduling.annotation.EnableScheduling
+
+@SpringBootApplication
+@EnableJpaRepositories
+@EnableScheduling
+@Deployment(resources = ["classpath:/bpmn/newsletter.bpmn"])
+class ExampleApplication
+
+fun main(args: Array<String>) {
+    runApplication<ExampleApplication>(*args)
+}
