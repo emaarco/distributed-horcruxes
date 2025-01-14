@@ -87,7 +87,7 @@ This repository currently contains examples of the following patterns to help yo
 
 - ✅ [**After-Transaction Hook**](./examples/after-transaction/README.md):
   Ensuring Zeebe interactions occur only after the transaction commits.
-- 📦 [**Outbox Pattern**](./examples/outbox/README.md):
+- 📦 [**Outbox Pattern**](./examples/outbox-pattern/README.md):
   Using a database outbox and scheduler for reliable message delivery.
 
 ## **Setup** ⚙️
