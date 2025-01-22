@@ -5,11 +5,25 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     groups:
       backend-dependencies:
         patterns:
           - "*"
         update-types:
           - "patch"
+          - "major"
+
+  # Config for Docker dependencies in docker-compose
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+          - "minor"
           - "major"
