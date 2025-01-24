@@ -1,5 +1,5 @@
 [versions]
-spring_version = "3.4.1"
+spring_version = "3.4.2"
 spring_dependency_version = "1.1.7"
 mockk_version = "1.13.16"
 spring_mockk_version = "4.0.2"
