@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 
 @SpringBootApplication
 @EnableJpaRepositories
-@Deployment(resources = ["classpath:/bpmn/newsletter.bpmn"])
+@Deployment(resources = ["classpath:/newsletter.bpmn"])
 class ExampleApplication
 
 fun main(args: Array<String>) {
