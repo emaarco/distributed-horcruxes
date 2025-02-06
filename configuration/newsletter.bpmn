@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0vze3ke" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0vze3ke" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.31.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
   <bpmn:message id="Message_04tc0t0" name="Message_FormSubmitted" />
   <bpmn:message id="Message_36dkcng" name="Message_SubscriptionConfirmed">
     <bpmn:extensionElements>
@@ -14,10 +14,20 @@
       <bpmn:incoming>Flow_1l1lj4m</bpmn:incoming>
       <bpmn:outgoing>Flow_1bsb8no</bpmn:outgoing>
     </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="Timer_After3Days" name="After 3&#10;days" attachedToRef="Activity_18erb45">
+      <bpmn:outgoing>Flow_1l1lj4m</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_0tvn6wx">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT2M30S</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_09cuvzp" sourceRef="Activity_18erb45" targetRef="Activity_SendWelcomeMail" />
+    <bpmn:sequenceFlow id="Flow_1bsb8no" sourceRef="Activity_AbortRegistration" targetRef="EndEvent_RegistrationAborted" />
+    <bpmn:sequenceFlow id="Flow_1csfyyz" sourceRef="StartEvent_SubmitRegistrationForm" targetRef="Activity_18erb45" />
+    <bpmn:sequenceFlow id="Flow_1i7hjid" sourceRef="Activity_SendWelcomeMail" targetRef="EndEvent_RegistrationCompleted" />
+    <bpmn:sequenceFlow id="Flow_1l1lj4m" sourceRef="Timer_After3Days" targetRef="Activity_AbortRegistration" />
     <bpmn:endEvent id="EndEvent_RegistrationAborted" name="Registration aborted">
       <bpmn:incoming>Flow_1bsb8no</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1bsb8no" sourceRef="Activity_AbortRegistration" targetRef="EndEvent_RegistrationAborted" />
     <bpmn:endEvent id="EndEvent_RegistrationCompleted" name="Registration completed">
       <bpmn:incoming>Flow_1i7hjid</bpmn:incoming>
     </bpmn:endEvent>
@@ -28,7 +38,6 @@
       <bpmn:incoming>Flow_09cuvzp</bpmn:incoming>
       <bpmn:outgoing>Flow_1i7hjid</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:sequenceFlow id="Flow_1i7hjid" sourceRef="Activity_SendWelcomeMail" targetRef="EndEvent_RegistrationCompleted" />
     <bpmn:startEvent id="StartEvent_SubmitRegistrationForm" name="Submit newsletter form">
       <bpmn:extensionElements>
         <zeebe:ioMapping>
@@ -41,14 +50,6 @@
     <bpmn:subProcess id="Activity_18erb45" name="Subscription Confirmation">
       <bpmn:incoming>Flow_1csfyyz</bpmn:incoming>
       <bpmn:outgoing>Flow_09cuvzp</bpmn:outgoing>
-      <bpmn:serviceTask id="Activity_SendConfirmationMail" name="Send confirmation mail">
-        <bpmn:extensionElements>
-          <zeebe:taskDefinition type="newsletter.sendConfirmationMail" />
-        </bpmn:extensionElements>
-        <bpmn:incoming>Flow_05i3x1y</bpmn:incoming>
-        <bpmn:incoming>Flow_0x4ewvb</bpmn:incoming>
-        <bpmn:outgoing>Flow_1bckm43</bpmn:outgoing>
-      </bpmn:serviceTask>
       <bpmn:receiveTask id="Activity_ConfirmRegistration" name="Confirm subscription" messageRef="Message_36dkcng">
         <bpmn:incoming>Flow_1bckm43</bpmn:incoming>
         <bpmn:outgoing>Flow_1cpwe57</bpmn:outgoing>
@@ -59,6 +60,21 @@
           <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
         </bpmn:timerEventDefinition>
       </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="Flow_05i3x1y" sourceRef="StartEvent_RequestReceived" targetRef="Activity_SendConfirmationMail" />
+      <bpmn:sequenceFlow id="Flow_0x4ewvb" sourceRef="Timer_EveryDay" targetRef="Activity_SendConfirmationMail" />
+      <bpmn:sequenceFlow id="Flow_1bckm43" sourceRef="Activity_SendConfirmationMail" targetRef="Activity_ConfirmRegistration" />
+      <bpmn:sequenceFlow id="Flow_1cpwe57" sourceRef="Activity_ConfirmRegistration" targetRef="EndEvent_SubscriptionConfirmed" />
+      <bpmn:serviceTask id="Activity_SendConfirmationMail" name="Send confirmation mail">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="newsletter.sendConfirmationMail" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_05i3x1y</bpmn:incoming>
+        <bpmn:incoming>Flow_0x4ewvb</bpmn:incoming>
+        <bpmn:outgoing>Flow_1bckm43</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="EndEvent_SubscriptionConfirmed" name="Subscription confirmed">
+        <bpmn:incoming>Flow_1cpwe57</bpmn:incoming>
+      </bpmn:endEvent>
       <bpmn:startEvent id="StartEvent_RequestReceived" name="Subscription requested">
         <bpmn:extensionElements>
           <zeebe:ioMapping>
@@ -67,23 +83,7 @@
         </bpmn:extensionElements>
         <bpmn:outgoing>Flow_05i3x1y</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="Flow_05i3x1y" sourceRef="StartEvent_RequestReceived" targetRef="Activity_SendConfirmationMail" />
-      <bpmn:sequenceFlow id="Flow_1bckm43" sourceRef="Activity_SendConfirmationMail" targetRef="Activity_ConfirmRegistration" />
-      <bpmn:sequenceFlow id="Flow_0x4ewvb" sourceRef="Timer_EveryDay" targetRef="Activity_SendConfirmationMail" />
-      <bpmn:endEvent id="EndEvent_SubscriptionConfirmed" name="Subscription confirmed">
-        <bpmn:incoming>Flow_1cpwe57</bpmn:incoming>
-      </bpmn:endEvent>
-      <bpmn:sequenceFlow id="Flow_1cpwe57" sourceRef="Activity_ConfirmRegistration" targetRef="EndEvent_SubscriptionConfirmed" />
     </bpmn:subProcess>
-    <bpmn:sequenceFlow id="Flow_1csfyyz" sourceRef="StartEvent_SubmitRegistrationForm" targetRef="Activity_18erb45" />
-    <bpmn:sequenceFlow id="Flow_1l1lj4m" sourceRef="Timer_After3Days" targetRef="Activity_AbortRegistration" />
-    <bpmn:sequenceFlow id="Flow_09cuvzp" sourceRef="Activity_18erb45" targetRef="Activity_SendWelcomeMail" />
-    <bpmn:boundaryEvent id="Timer_After3Days" name="After 3&#10;days" attachedToRef="Activity_18erb45">
-      <bpmn:outgoing>Flow_1l1lj4m</bpmn:outgoing>
-      <bpmn:timerEventDefinition id="TimerEventDefinition_0tvn6wx">
-        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT2M30S</bpmn:timeDuration>
-      </bpmn:timerEventDefinition>
-    </bpmn:boundaryEvent>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="newsletter-subscription">

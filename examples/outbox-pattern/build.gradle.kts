@@ -19,3 +19,11 @@ dependencies {
     implementation(libs.bundles.database)
     testImplementation(libs.bundles.test)
 }
+
+sourceSets {
+    main {
+        resources {
+            srcDirs("../../configuration")
+        }
+    }
+}

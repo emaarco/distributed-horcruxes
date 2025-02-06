@@ -31,7 +31,7 @@ class ProcessMessagePersistenceAdapter(
             val variables = mapOf("subscriptionId" to id.value.toString())
             val processMessage = ProcessMessageEntity(
                 messageName = MESSAGE_RECEIVE_CONFIRMATION,
-                correlationId = null,
+                correlationId = id.value.toString(),
                 variables = objectMapper.writeValueAsString(variables),
             )
             repository.save(processMessage)
