@@ -10,7 +10,7 @@ kotlin_serialization_version = "1.8.0"
 mockito_version = "5.2.0"
 archunit_version = "1.4.0"
 kotlin_mockito_version = "5.4.0"
-zeebe_version = "8.6.8"
+zeebe_version = "8.6.9"
 postgres_version = "42.7.5"
 
 [libraries]
