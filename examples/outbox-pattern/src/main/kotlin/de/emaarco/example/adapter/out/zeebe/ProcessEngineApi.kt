@@ -7,16 +7,13 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 
 @Component
-class ProcessEngineApi(
-    private val zeebeClient: ZeebeClient,
-    private val manager: ProcessTransactionManager
-) {
+class ProcessEngineApi(private val zeebeClient: ZeebeClient) {
 
     fun sendMessage(
         messageName: String,
         correlationId: String?,
         variables: Map<String, Any> = emptyMap(),
-    ) = manager.executeAfterCommit {
+    ) {
         zeebeClient.newPublishMessageCommand()
             .messageName(messageName)
             .applyCorrelationKey(correlationId)

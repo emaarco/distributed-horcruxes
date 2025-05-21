@@ -7,7 +7,6 @@ camunda:
       rest-address: http://localhost:9600
       prefer-rest-over-grpc: false
 
-
 server:
   port: 8081
 
@@ -23,3 +22,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    io.camunda.zeebe.client.impl.ZeebeCallCredentials: ERROR
