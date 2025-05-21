@@ -1,23 +1,19 @@
 [versions]
-spring_version = "3.4.4"
+spring_version = "3.5.0"
 spring_dependency_version = "1.1.7"
 mockk_version = "1.14.2"
 spring_mockk_version = "4.0.2"
 kotlin_version = "2.1.20"
-micrometer_version = "1.14.1"
 kotlin_logging_version = "3.0.5"
-kotlin_serialization_version = "1.8.0"
 mockito_version = "5.2.0"
-archunit_version = "1.4.0"
 kotlin_mockito_version = "5.4.0"
-zeebe_version = "8.6.12"
+zeebe_version = "8.7.1"
 postgres_version = "42.7.5"
 
 [libraries]
 web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring_version" }
 aop = { module = "org.springframework.boot:spring-boot-starter-aop", version.ref = "spring_version" }
 actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "spring_version" }
-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring_version" }
 devtools = { module = "org.springframework.boot:spring-boot-devtools", version.ref = "spring_version" }
 jpa = { module = 'org.springframework.boot:spring-boot-starter-data-jpa', version.ref = 'spring_version' }
 
@@ -31,7 +27,6 @@ zeebeProcessTest = { module = "io.camunda:zeebe-process-test-extension", version
 # Tests
 spring_test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring_version" }
 mockito = { module = "org.mockito:mockito-inline", version.ref = "mockito_version" }
-archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit_version" }
 kotlin_mockito = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "kotlin_mockito_version" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk_version" }
 spring_mockk = { module = "com.ninja-squad:springmockk", version.ref = "spring_mockk_version" }
@@ -39,18 +34,17 @@ spring_mockk = { module = "com.ninja-squad:springmockk", version.ref = "spring_m
 # Kotlin
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin_version" }
 kotlin_logging = { module = "io.github.microutils:kotlin-logging", version.ref = "kotlin_logging_version" }
-kotlin_serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlin_serialization_version" }
 
 [bundles]
 defaultService = ["kotlin-reflect", "kotlin_logging", "aop", "devtools", "actuator", "web", "zeebeSdk"]
 database = ["jpa", "postgres"]
 test = ["spring_test", "mockito", "mockk", "spring_mockk", "kotlin_mockito", "zeebeProcessTest"]
-archunit = ["archunit"]
 
 [plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin_version" }
-kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin_version" }
-kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin_version" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin_version" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin_version" }
+kotlinSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin_version" }
+kotlinJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin_version" }
+kotlinKapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin_version" }
 springframework = { id = "org.springframework.boot", version.ref = "spring_version" }
-spring-dependency = { id = "io.spring.dependency-management", version.ref = "spring_dependency_version" }
+springDependency = { id = "io.spring.dependency-management", version.ref = "spring_dependency_version" }
+bpmnToCode = { id = "io.github.emaarco.bpmn-to-code-gradle", version = "0.0.5-alpha" }

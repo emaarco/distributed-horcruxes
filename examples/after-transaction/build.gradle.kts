@@ -1,10 +1,15 @@
+import io.github.emaarco.bpmn.adapter.GenerateBpmnModelsTask
+import io.github.emaarco.bpmn.domain.shared.OutputLanguage
+import io.github.emaarco.bpmn.domain.shared.ProcessEngine
+
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.kapt)
-    alias(libs.plugins.kotlin.jpa)
-    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.kotlinKapt)
+    alias(libs.plugins.kotlinJpa)
+    alias(libs.plugins.kotlinSpring)
     alias(libs.plugins.springframework)
-    alias(libs.plugins.spring.dependency)
+    alias(libs.plugins.springDependency)
+    alias(libs.plugins.bpmnToCode)
 }
 
 group = "de.emaarco.example"
@@ -26,4 +31,14 @@ sourceSets {
             srcDirs("../../configuration")
         }
     }
+}
+
+tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
+    baseDir = "${projectDir}/../../configuration"
+    filePattern = "*.bpmn"
+    outputFolderPath = "$projectDir/src/main/kotlin"
+    packagePath = "de.emaarco.example.adapter.process"
+    outputLanguage = OutputLanguage.KOTLIN
+    processEngine = ProcessEngine.ZEEBE
+    useVersioning = false
 }
