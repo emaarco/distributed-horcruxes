@@ -42,3 +42,13 @@ tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
     processEngine = ProcessEngine.ZEEBE
     useVersioning = false
 }
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+kotlin {
+    jvmToolchain(21)
+}
