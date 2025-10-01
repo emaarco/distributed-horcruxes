@@ -1,14 +1,14 @@
 [versions]
-spring_version = "3.5.5"
+spring_version = "3.5.6"
 spring_dependency_version = "1.1.7"
 mockk_version = "1.14.5"
 spring_mockk_version = "4.0.2"
-kotlin_version = "2.2.10"
+kotlin_version = "2.2.20"
 kotlin_logging_version = "3.0.5"
 mockito_version = "5.2.0"
-kotlin_mockito_version = "6.0.0"
-zeebe_version = "8.7.11"
-postgres_version = "42.7.7"
+kotlin_mockito_version = "6.1.0"
+zeebe_version = "8.7.13"
+postgres_version = "42.7.8"
 
 [libraries]
 web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring_version" }
