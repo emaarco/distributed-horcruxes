@@ -83,8 +83,10 @@ and provide different trade-offs between simplicity, reliability, and performanc
 
 ## **Examples in This Repository** 📚
 
-This repository currently contains examples of the following patterns to help you get started:
+This repository contains examples that demonstrate both the problem and proven solutions:
 
+- ⚠️ [**Base Scenario**](./examples/base-scenario/README.md):
+  The naive implementation that demonstrates what goes wrong without proper transaction handling.
 - ✅ [**After-Transaction Hook**](./examples/after-transaction/README.md):
   Ensuring Zeebe interactions occur only after the transaction commits.
 - 📦 [**Outbox Pattern**](./examples/outbox-pattern/README.md):
