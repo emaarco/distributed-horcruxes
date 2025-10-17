@@ -18,7 +18,6 @@ import java.time.temporal.ChronoUnit
  */
 @Component
 class NewsletterSubscriptionProcessAdapter(
-    private val engineApi: ProcessEngineApi,
     private val zeebeClient: ZeebeClient
 ) : NewsletterSubscriptionProcess {
 
