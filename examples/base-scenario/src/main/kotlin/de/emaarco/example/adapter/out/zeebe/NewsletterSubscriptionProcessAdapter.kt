@@ -4,7 +4,10 @@ import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messa
 import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_SubscriptionConfirmed
 import de.emaarco.example.application.port.out.NewsletterSubscriptionProcess
 import de.emaarco.example.domain.SubscriptionId
+import io.camunda.zeebe.client.ZeebeClient
 import org.springframework.stereotype.Component
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 
 /**
  * Base scenario: Direct process engine calls without transaction safety.
@@ -15,25 +18,30 @@ import org.springframework.stereotype.Component
  */
 @Component
 class NewsletterSubscriptionProcessAdapter(
-    private val engineApi: ProcessEngineApi
+    private val engineApi: ProcessEngineApi,
+    private val zeebeClient: ZeebeClient
 ) : NewsletterSubscriptionProcess {
 
     override fun submitForm(id: SubscriptionId) {
+        // PROBLEM: This call happens immediately, potentially before the DB commit!
         val variables = mapOf("subscriptionId" to id.value.toString())
-        // PROBLEM: This call happens immediately, potentially before DB commit!
-        engineApi.startProcessViaMessage(
-            messageName = Message_FormSubmitted,
-            correlationId = id.value.toString(),
-            variables = variables
-        )
+        val allVariables = variables + mapOf("correlationId" to id.value.toString())
+        zeebeClient.newPublishMessageCommand()
+            .messageName(Message_FormSubmitted)
+            .withoutCorrelationKey()
+            .variables(allVariables)
+            .send()
+            .join()
     }
 
     override fun confirmSubscription(id: SubscriptionId) {
-        // PROBLEM: This call happens immediately, potentially before DB commit!
-        engineApi.sendMessage(
-            messageName = Message_SubscriptionConfirmed,
-            correlationId = id.value.toString(),
-        )
+        // PROBLEM: This call happens immediately, potentially before the DB commit!
+        zeebeClient.newPublishMessageCommand()
+            .messageName(Message_SubscriptionConfirmed)
+            .correlationKey(id.value.toString())
+            .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
+            .send()
+            .join()
     }
 
 }
