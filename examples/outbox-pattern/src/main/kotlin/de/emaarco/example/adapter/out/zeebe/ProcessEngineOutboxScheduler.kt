@@ -29,43 +29,30 @@ class ProcessEngineOutboxScheduler(
 
     private val log = KotlinLogging.logger {}
     private val objectMapper = ObjectMapper()
-    private val maxRetryCount = 3
 
     @Scheduled(fixedDelay = 200)
     fun sendMessages() {
         log.debug { "Running scheduler to send messages to zeebe" }
-        var processedCount = 0
-
-        // Process messages one at a time until none are left
-        while (true) {
-            val processed = processNextMessage()
-            if (!processed) break
-            processedCount++
-        }
-
-        if (processedCount > 0) {
-            log.debug { "Processed $processedCount messages" }
-        }
+        var messagesProcessed = 0
+        while (processNextMessage()) messagesProcessed++
+        log.debug { "Scheduler finished sending messages to zeebe. Processed $messagesProcessed messages" }
     }
 
     /**
      * Processes a single message within a transaction using pessimistic locking.
      * Returns true if a message was processed, false if no messages are available.
      */
-    private fun processNextMessage(): Boolean {
-        return performInTransaction {
-            // Lock and fetch one message (SELECT FOR UPDATE SKIP LOCKED)
-            val message = repository.findFirstByStatusWithLock(MessageStatus.PENDING)
-                ?: return@performInTransaction false
-
+    private fun processNextMessage() = performInTransaction {
+        val message = repository.findFirstByStatusWithLock(MessageStatus.PENDING)
+        if (message == null) {
+            false
+        } else {
             trySendMessage(message)
             true
         }
     }
 
-    private fun trySendMessage(
-        message: ProcessMessageEntity
-    ) {
+    private fun trySendMessage(message: ProcessMessageEntity) {
         try {
             sendMessage(message)
             val sentMessage = message.copy(status = MessageStatus.SENT)
@@ -73,15 +60,9 @@ class ProcessEngineOutboxScheduler(
             log.info { "Successfully sent message ${message.messageName} with correlationId ${message.correlationId}" }
         } catch (e: Exception) {
             val retryCount = message.retryCount + 1
-            if (retryCount >= maxRetryCount) {
-                val failedMessage = message.copy(status = MessageStatus.FAILED)
-                repository.save(failedMessage)
-                log.error(e) { "Failed to send message ${message.messageName} after $maxRetryCount attempts" }
-            } else {
-                val retryMessage = message.copy(retryCount = retryCount)
-                repository.save(retryMessage)
-                log.warn(e) { "Retrying to send message ${message.messageName} (attempt $retryCount)" }
-            }
+            val retryMessage = message.copy(retryCount = retryCount)
+            repository.save(retryMessage)
+            log.warn(e) { "Retrying to send message ${message.messageName} (attempt $retryCount)" }
         }
     }
 
