@@ -76,6 +76,7 @@ class ProcessEngineOutboxScheduler(
         camundaClient.newPublishMessageCommand()
             .messageName(message.messageName)
             .correlationKey(message.correlationId)
+            .messageId(messageId)
             .variables(variables)
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()
