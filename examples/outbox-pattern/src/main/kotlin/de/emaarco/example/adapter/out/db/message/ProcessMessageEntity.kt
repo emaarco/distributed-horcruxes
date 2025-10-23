@@ -1,6 +1,11 @@
 package de.emaarco.example.adapter.out.db.message
 
-import jakarta.persistence.*
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.Id
+import jakarta.persistence.PreUpdate
 import java.time.LocalDateTime
 import java.util.*
 
@@ -14,8 +19,8 @@ data class ProcessMessageEntity(
     @Column(name = "message_name", nullable = false)
     val messageName: String,
 
-    @Column(name = "correlation_id", nullable = true)
-    val correlationId: String? = null,
+    @Column(name = "correlation_id", nullable = false)
+    val correlationId: String,
 
     @Column(name = "variables", nullable = false)
     val variables: String,
