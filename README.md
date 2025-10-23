@@ -1,6 +1,7 @@
 # 🧙‍♂️ Distributed Horcruxes
 
-> 🚧 **This repository is currently in a draft version**
+> 🚧 This repository is subject of constant change. It deals with a problem that has not yet been examined and solved in
+> depth in the context of remote process engines (like Zeebe).
 
 ## **Introduction** 🗂
 
@@ -71,12 +72,6 @@ This avoids notifying Zeebe with incomplete or uncommitted data.
 
 Save Zeebe messages in an "outbox" table as part of the same database transaction.
 A scheduler or worker then reliably sends these messages to Zeebe after the transaction is complete.
-
-### **3. SAGA Pattern** 🔁
-
-Break workflows into smaller steps.
-Each step has a **compensating action** to undo its work if something goes wrong,
-ensuring consistency across systems without requiring a global transaction.
 
 These patterns are widely used in distributed systems
 and provide different trade-offs between simplicity, reliability, and performance.
