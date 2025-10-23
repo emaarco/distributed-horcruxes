@@ -73,12 +73,6 @@ This avoids notifying Zeebe with incomplete or uncommitted data.
 Save Zeebe messages in an "outbox" table as part of the same database transaction.
 A scheduler or worker then reliably sends these messages to Zeebe after the transaction is complete.
 
-### **3. SAGA Pattern** 🔁
-
-Break workflows into smaller steps.
-Each step has a **compensating action** to undo its work if something goes wrong,
-ensuring consistency across systems without requiring a global transaction.
-
 These patterns are widely used in distributed systems
 and provide different trade-offs between simplicity, reliability, and performance.
 
