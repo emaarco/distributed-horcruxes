@@ -34,14 +34,14 @@ The `NewsletterSubscriptionProcessAdapter` in this example calls Zeebe directly 
 ```kotlin
 @Component
 class NewsletterSubscriptionProcessAdapter(
-    private val zeebeClient: ZeebeClient
+    private val camundaClient: CamundaClient
 ) : NewsletterSubscriptionProcess {
 
     override fun submitForm(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
         val variables = mapOf("subscriptionId" to id.value.toString())
         val allVariables = variables + mapOf("correlationId" to id.value.toString())
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(Message_FormSubmitted)
             .withoutCorrelationKey()
             .variables(allVariables)
@@ -51,7 +51,7 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun confirmSubscription(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(Message_SubscriptionConfirmed)
             .correlationKey(id.value.toString())
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))

@@ -124,7 +124,7 @@ The BPMN model (`configuration/newsletter.bpmn`) is shared across both examples 
 - Uses `spring-zeebe` client library (Camunda 8)
 - Process definitions are in `configuration/` and shared across examples
 - Workers use `@JobWorker` annotation to handle Zeebe job types
-- Messages are sent via `ZeebeClient` API (wrapped in adapter implementations)
+- Messages are sent via `CamundaClient` API (wrapped in adapter implementations)
 
 ### Database Configuration
 - PostgreSQL with Hibernate JPA

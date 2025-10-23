@@ -24,7 +24,7 @@ Here’s how it works:
 Below is the implementation of the `ProcessTransactionManager`:
 
 ```kotlin
-class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
+class ProcessTransactionManager(private val camundaClient: CamundaClient) {
 
     private val log = KotlinLogging.logger {}
 
@@ -50,7 +50,7 @@ class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
         }
 
         override fun beforeCommit(readOnly: Boolean) {
-            val topology = zeebeClient.newTopologyRequest().send().join()
+            val topology = camundaClient.newTopologyRequest().send().join()
             val healthy = checkBrokerHealth(topology)
             if (!healthy) throw IllegalStateException("No healthy broker found")
         }
@@ -68,14 +68,14 @@ class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
 
 ### **How to Use It**
 
-1. Create an instance of `ProcessTransactionManager` with a configured `ZeebeClient`:
+1. Create an instance of `ProcessTransactionManager` with a configured `CamundaClient`:
    ```kotlin
-   val processTransactionManager = ProcessTransactionManager(zeebeClient)
+   val processTransactionManager = ProcessTransactionManager(camundaClient)
    ```
 2. Use the `executeAfterCommit` method to wrap your Zeebe interaction:
    ```kotlin
    processTransactionManager.executeAfterCommit {
-       zeebeClient.newCreateInstanceCommand()
+       camundaClient.newCreateInstanceCommand()
            .bpmnProcessId("my-process")
            .latestVersion()
            .send()
@@ -112,7 +112,7 @@ The solution uses a layered architecture to separate concerns:
    ```kotlin
    @Component
    class ProcessEngineApi(
-       private val zeebeClient: ZeebeClient,
+       private val camundaClient: CamundaClient,
        private val manager: ProcessTransactionManager
    ) {
        fun startProcessViaMessage(
@@ -121,7 +121,7 @@ The solution uses a layered architecture to separate concerns:
            variables: Map<String, Any> = emptyMap(),
        ) = manager.executeAfterCommit {
            // Actual Zeebe call happens here, after commit
-           zeebeClient.newPublishMessageCommand()
+           camundaClient.newPublishMessageCommand()
                .messageName(messageName)
                .withoutCorrelationKey()
                .variables(allVariables)

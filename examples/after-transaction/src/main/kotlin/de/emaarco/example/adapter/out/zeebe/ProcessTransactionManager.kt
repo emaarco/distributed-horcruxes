@@ -1,9 +1,9 @@
 package de.emaarco.example.adapter.out.zeebe
 
-import io.camunda.zeebe.client.ZeebeClient
-import io.camunda.zeebe.client.api.response.BrokerInfo
-import io.camunda.zeebe.client.api.response.PartitionBrokerHealth
-import io.camunda.zeebe.client.api.response.Topology
+import io.camunda.client.CamundaClient
+import io.camunda.client.api.response.BrokerInfo
+import io.camunda.client.api.response.PartitionBrokerHealth
+import io.camunda.client.api.response.Topology
 import mu.KotlinLogging
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionSynchronization
@@ -15,7 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * It also ensures that no calls are made to the process engine if the transaction fails.
  */
 @Component
-class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
+class ProcessTransactionManager(private val camundaClient: CamundaClient) {
 
     private val log = KotlinLogging.logger {}
 
@@ -41,7 +41,7 @@ class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
         }
 
         override fun beforeCommit(readOnly: Boolean) {
-            val topology = zeebeClient.newTopologyRequest().send().join()
+            val topology = camundaClient.newTopologyRequest().send().join()
             val healthy = checkBrokerHealth(topology)
             if (!healthy) throw IllegalStateException("No healthy broker found")
         }

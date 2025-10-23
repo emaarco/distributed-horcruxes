@@ -2,7 +2,7 @@ package de.emaarco.example.adapter.`in`.zeebe
 
 import de.emaarco.example.application.port.`in`.SendWelcomeMailUseCase
 import de.emaarco.example.domain.SubscriptionId
-import io.camunda.zeebe.spring.client.annotation.JobWorker
+import io.camunda.client.annotation.JobWorker
 import io.camunda.zeebe.spring.client.annotation.Variable
 import mu.KotlinLogging
 import org.springframework.stereotype.Component
