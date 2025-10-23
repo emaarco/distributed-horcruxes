@@ -1,6 +1,6 @@
 package de.emaarco.example
 
-import io.camunda.zeebe.spring.client.annotation.Deployment
+import io.camunda.client.annotation.Deployment
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
