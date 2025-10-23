@@ -86,6 +86,53 @@ class ProcessTransactionManager(private val zeebeClient: ZeebeClient) {
 This ensures the interaction with Zeebe (e.g., sending a message or starting a process) happens **only after** the
 database transaction is committed.
 
+### **Architecture Flow**
+
+The solution uses a layered architecture to separate concerns:
+
+1. **NewsletterSubscriptionProcessAdapter** - Implements the port interface, delegates to ProcessEngineApi
+   ```kotlin
+   @Component
+   class NewsletterSubscriptionProcessAdapter(
+       private val engineApi: ProcessEngineApi
+   ) : NewsletterSubscriptionProcess {
+
+       override fun submitForm(id: SubscriptionId) {
+           val variables = mapOf("subscriptionId" to id.value.toString())
+           engineApi.startProcessViaMessage(
+               messageName = Message_FormSubmitted,
+               correlationId = id.value.toString(),
+               variables = variables
+           )
+       }
+   }
+   ```
+
+2. **ProcessEngineApi** - Wraps all Zeebe calls with transaction manager
+   ```kotlin
+   @Component
+   class ProcessEngineApi(
+       private val zeebeClient: ZeebeClient,
+       private val manager: ProcessTransactionManager
+   ) {
+       fun startProcessViaMessage(
+           messageName: String,
+           correlationId: String,
+           variables: Map<String, Any> = emptyMap(),
+       ) = manager.executeAfterCommit {
+           // Actual Zeebe call happens here, after commit
+           zeebeClient.newPublishMessageCommand()
+               .messageName(messageName)
+               .withoutCorrelationKey()
+               .variables(allVariables)
+               .send()
+               .join()
+       }
+   }
+   ```
+
+3. **ProcessTransactionManager** - Handles the transaction synchronization (shown above)
+
 ## **Sequence Flow** 📊
 
 Here’s how the process works:
