@@ -20,8 +20,10 @@ The outbox pattern consists of two main components:
 - **Concurrent Scheduler Support**: Uses `SELECT FOR UPDATE SKIP LOCKED` to allow multiple scheduler instances
 - **Audit Trail**: Sent messages remain in the database for historical tracking
 
-> **📘 Please note:** While this pattern provides robust retry logic and concurrent processing support,
-> message ordering is based on creation time and may not guarantee strict ordering in all scenarios,
+> **📘 Please note:** This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times
+> if a failure occurs after sending but before marking as SENT. Your process must be idempotent to handle duplicate messages safely.
+>
+> Message ordering is based on creation time and may not guarantee strict ordering in all scenarios,
 > especially with concurrent schedulers or retries. Consider additional ordering logic for complex workflows.
 
 ## **Code Example** 💻
@@ -163,6 +165,19 @@ class ProcessEngineOutboxScheduler(
 - **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking others.
 - **Status Tracking**: Messages transition from `PENDING` → `SENT` (not deleted, for audit trail).
 - **Retry Mechanism**: Failed sends increment `retryCount` and keep status as `PENDING` for automatic retry on next run.
+
+## **Idempotency Requirements** 🔁
+
+This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times if a failure occurs after sending to Zeebe but before marking the message as SENT in the database.
+
+**Design your entire system with idempotency in mind:**
+
+- **Process Definitions**: Use correlation keys and message names that allow Zeebe to deduplicate messages within its TTL window
+- **Job Workers**: Implement workers that can safely handle the same job multiple times without side effects
+- **External Systems**: Ensure any external API calls (email, notifications, etc.) are idempotent or use idempotency keys
+- **Database Operations**: Use upserts, conditional updates, or unique constraints to prevent duplicate data
+
+By designing for idempotency from the start, you ensure the system remains consistent even when messages are delivered multiple times.
 
 ## **Sequence Flow** 📊
 
