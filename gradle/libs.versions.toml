@@ -7,7 +7,7 @@ kotlin_version = "2.2.20"
 kotlin_logging_version = "3.0.5"
 mockito_version = "5.2.0"
 kotlin_mockito_version = "6.1.0"
-zeebe_version = "8.7.13"
+zeebe_version = "8.8.0"
 postgres_version = "42.7.8"
 
 [libraries]
@@ -21,7 +21,7 @@ jpa = { module = 'org.springframework.boot:spring-boot-starter-data-jpa', versio
 postgres = { module = 'org.postgresql:postgresql', version.ref = 'postgres_version' }
 
 # Zeebe
-zeebeSdk = { module = "io.camunda:spring-boot-starter-camunda-sdk", version.ref = "zeebe_version" }
+zeebeSdk = { module = "io.camunda:camunda-spring-boot-starter", version.ref = "zeebe_version" }
 zeebeProcessTest = { module = "io.camunda:zeebe-process-test-extension", version.ref = "zeebe_version" }
 
 # Tests

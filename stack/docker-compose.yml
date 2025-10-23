@@ -12,39 +12,28 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
 
-  zeebe:
-    image: camunda/zeebe:${CAMUNDA_PLATFORM_VERSION}
-    container_name: dh-zeebe
+  # Consolidated Zeebe + Operate + Tasklist - https://docs.camunda.io/docs/self-managed/setup/deploy/other/docker/#zeebe
+  orchestration:
+    image: camunda/camunda:${CAMUNDA_VERSION}
+    container_name: orchestration
     ports:
       - "26500:26500"
       - "9600:9600"
-    environment:
-      ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_MODE: ${ZEEBE_AUTHENTICATION_MODE}
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME: io.camunda.zeebe.exporter.ElasticsearchExporter
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL: http://elasticsearch:9200
-      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m"
-      ZEEBE_LOG_LEVEL: debug
+      - "8088:8080"
     restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9600 && echo -e \"GET /actuator/health/status HTTP/1.1\r\nHost: localhost\r\n\r\n\" >&3 && head -n 1 <&3'" ]
+      interval: 1s
+      retries: 30
+      start_period: 30s
+    volumes:
+      - zeebe:/usr/local/zeebe/data
+    configs:
+      - source: orchestration-config
+        target: /usr/local/camunda/config/application.yaml
     networks:
-      - camunda-platform
+      - camunda
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-
-  operate:
-    image: camunda/operate:${CAMUNDA_PLATFORM_VERSION}
-    container_name: dh-operate
-    ports:
-      - "9081:8080"
-    environment:
-      - CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS=zeebe:26500
-      - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:9200
-      - CAMUNDA_OPERATE_ZEEBEELASTICSEARCH_URL=http://elasticsearch:9200
-    networks:
-      - camunda-platform
-    depends_on:
-      zeebe:
-        condition: service_started
       elasticsearch:
         condition: service_healthy
 
@@ -64,10 +53,42 @@ services:
       interval: 1s
       retries: 90
     networks:
-      - camunda-platform
+      - camunda
 
 volumes:
   elastic:
+  zeebe:
 
 networks:
-  camunda-platform:
+  camunda:
+
+configs:
+
+  orchestration-config:
+    content: |
+      management.endpoints.configprops.show-values: always
+      camunda:
+        system:
+          cpu-thread-count: "3"
+          io-thread-count: "3"
+        security:
+          authentication:
+            method: "basic"
+            unprotectedApi: true
+          authorizations:
+            enabled: false
+          initialization:
+            users:
+              - username: "demo"
+                password: "demo"
+                name: "Demo User"
+                email: "demo@demo.com"
+            defaultRoles.admin.users:
+              - "demo"
+        database.index.numberOfReplicas: 0 # Single node elasticsearch so we disable replication
+        data:
+          secondary-storage:
+            type: elasticsearch
+            elasticsearch:
+              cluster-name: elasticsearch
+              url: "http://elasticsearch:9200"
