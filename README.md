@@ -1,6 +1,7 @@
 # 🧙‍♂️ Distributed Horcruxes
 
-> 🚧 **This repository is currently in a draft version**
+> 🚧 **This repository is subject of constant change.
+> It deals with a problem that has not yet been examined and solved in depth in the context of Zeebe.
 
 ## **Introduction** 🗂
 
