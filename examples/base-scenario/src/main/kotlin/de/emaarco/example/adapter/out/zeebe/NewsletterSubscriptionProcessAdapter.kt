@@ -4,7 +4,7 @@ import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messa
 import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_SubscriptionConfirmed
 import de.emaarco.example.application.port.out.NewsletterSubscriptionProcess
 import de.emaarco.example.domain.SubscriptionId
-import io.camunda.zeebe.client.ZeebeClient
+import io.camunda.client.CamundaClient
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -18,14 +18,14 @@ import java.time.temporal.ChronoUnit
  */
 @Component
 class NewsletterSubscriptionProcessAdapter(
-    private val zeebeClient: ZeebeClient
+    private val camundaClient: CamundaClient
 ) : NewsletterSubscriptionProcess {
 
     override fun submitForm(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
         val variables = mapOf("subscriptionId" to id.value.toString())
         val allVariables = variables + mapOf("correlationId" to id.value.toString())
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(Message_FormSubmitted)
             .withoutCorrelationKey()
             .variables(allVariables)
@@ -35,7 +35,7 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun confirmSubscription(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(Message_SubscriptionConfirmed)
             .correlationKey(id.value.toString())
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))

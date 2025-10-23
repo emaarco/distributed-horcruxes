@@ -31,7 +31,7 @@ class ProcessMessagePersistenceAdapter(
 
     private fun toProcessMessage(
         messageName: String,
-        correlationId: String?,
+        correlationId: String,
         variables: Map<String, Any>,
     ) = ProcessMessageEntity(
         messageName = messageName,

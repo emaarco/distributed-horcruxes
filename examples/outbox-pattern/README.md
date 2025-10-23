@@ -97,7 +97,7 @@ pessimistic locking:
 ```kotlin
 @Component
 class ProcessEngineOutboxScheduler(
-    private val engineApi: ProcessEngineApi,
+    private val camundaClient: CamundaClient,
     private val transactionManager: PlatformTransactionManager,
     private val repository: ProcessMessageJpaRepository,
 ) {
@@ -143,11 +143,16 @@ class ProcessEngineOutboxScheduler(
 
     private fun sendMessage(message: ProcessMessageEntity) {
         val variables = objectMapper.readValue(message.variables, object : TypeReference<Map<String, Any>>() {})
-        engineApi.sendMessage(
-            messageName = message.messageName,
-            correlationId = message.correlationId,
-            variables = variables,
-        )
+        val messageId = "${message.correlationId}-${message.messageName}"
+        log.info { "Sending message ${message.messageName} with messageId $messageId and variables $variables" }
+        camundaClient.newPublishMessageCommand()
+            .messageName(message.messageName)
+            .correlationKey(message.correlationId)
+            .messageId(messageId)
+            .variables(variables)
+            .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
+            .send()
+            .join()
     }
 
     private fun <T> performInTransaction(block: () -> T): T {
@@ -170,6 +175,13 @@ class ProcessEngineOutboxScheduler(
   @Query("SELECT m FROM process_message m WHERE m.status = :status ORDER BY m.createdAt ASC")
   fun findFirstByStatusWithLock(status: MessageStatus): ProcessMessageEntity?
   ```
+- **Direct Zeebe Client Usage**: The scheduler uses `CamundaClient` directly without an intermediate API layer,
+  providing
+  direct control over message publishing.
+- **Message Deduplication via messageId**: Each message is sent with a unique `messageId` (combination of
+  `correlationId`
+  and `messageName`) to enable Zeebe's built-in deduplication within the message TTL window (10 seconds). This prevents
+  duplicate message processing if the scheduler retries a message that was already successfully sent to Zeebe.
 - **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking
   others.
 - **Status Tracking**: Messages transition from `PENDING` → `SENT` (not deleted, for audit trail).
@@ -179,6 +191,12 @@ class ProcessEngineOutboxScheduler(
 
 This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times if a failure occurs
 after sending to Zeebe but before marking the message as SENT in the database.
+
+**Built-in Deduplication:**
+
+- Each message is sent with a unique `messageId` (combination of `correlationId` and `messageName`)
+- Zeebe provides automatic deduplication for messages with the same `messageId` within the TTL window (10 seconds)
+- This prevents duplicate message processing if the scheduler retries a message that was already successfully sent
 
 **Design your entire system with idempotency in mind:**
 
@@ -201,13 +219,13 @@ sequenceDiagram
     participant DB
     participant Outbox
     participant Scheduler
-    participant Engine
+    participant Zeebe
     Service ->> DB: 1. Save business data
     Service ->> Outbox: 2. Save message (status=PENDING)
     Service ->> DB: 3. Commit transaction
     Scheduler ->> Outbox: 4. SELECT FOR UPDATE SKIP LOCKED (status=PENDING)
     Outbox -->> Scheduler: 5. Return locked message
-    Scheduler ->> Engine: 6. Send message to Zeebe
+    Scheduler ->> Zeebe: 6. Send message to Zeebe (with messageId)
     Scheduler ->> Outbox: 7. Update status=SENT
     Scheduler ->> DB: 8. Commit transaction
     Note over Scheduler: On failure: increment retryCount, keep status=PENDING

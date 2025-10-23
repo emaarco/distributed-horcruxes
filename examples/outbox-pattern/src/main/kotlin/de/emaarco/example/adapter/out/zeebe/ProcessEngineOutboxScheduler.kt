@@ -5,11 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.emaarco.example.adapter.out.db.message.MessageStatus
 import de.emaarco.example.adapter.out.db.message.ProcessMessageEntity
 import de.emaarco.example.adapter.out.db.message.ProcessMessageJpaRepository
+import io.camunda.client.CamundaClient
 import mu.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 
 /**
  * This scheduler runs every 200 ms to process and send outbox messages to Zeebe.
@@ -22,7 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate
  */
 @Component
 class ProcessEngineOutboxScheduler(
-    private val engineApi: ProcessEngineApi,
+    private val camundaClient: CamundaClient,
     private val transactionManager: PlatformTransactionManager,
     private val repository: ProcessMessageJpaRepository,
 ) {
@@ -68,12 +71,16 @@ class ProcessEngineOutboxScheduler(
 
     private fun sendMessage(message: ProcessMessageEntity) {
         val variables = objectMapper.readValue(message.variables, object : TypeReference<Map<String, Any>>() {})
-        log.info { "Sending message ${message.messageName} with variables $variables" }
-        engineApi.sendMessage(
-            messageName = message.messageName,
-            correlationId = message.correlationId,
-            variables = variables,
-        )
+        val messageId = "${message.correlationId}-${message.messageName}"
+        log.info { "Sending message ${message.messageName} with messageId $messageId and variables $variables" }
+        camundaClient.newPublishMessageCommand()
+            .messageName(message.messageName)
+            .correlationKey(message.correlationId)
+            .messageId(messageId)
+            .variables(variables)
+            .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
+            .send()
+            .join()
     }
 
     private fun <T> performInTransaction(block: () -> T): T {

@@ -1,13 +1,13 @@
 package de.emaarco.example.adapter.out.zeebe
 
-import io.camunda.zeebe.client.ZeebeClient
+import io.camunda.client.CamundaClient
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 
 @Component
 class ProcessEngineApi(
-    private val zeebeClient: ZeebeClient,
+    private val camundaClient: CamundaClient,
     private val manager: ProcessTransactionManager
 ) {
 
@@ -17,7 +17,7 @@ class ProcessEngineApi(
         variables: Map<String, Any> = emptyMap(),
     ) = manager.executeAfterCommit {
         val allVariables = variables + mapOf("correlationId" to correlationId)
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(messageName)
             .withoutCorrelationKey()
             .variables(allVariables)
@@ -30,7 +30,7 @@ class ProcessEngineApi(
         correlationId: String,
         variables: Map<String, Any> = emptyMap(),
     ) = manager.executeAfterCommit {
-        zeebeClient.newPublishMessageCommand()
+        camundaClient.newPublishMessageCommand()
             .messageName(messageName)
             .correlationKey(correlationId)
             .variables(variables)
