@@ -1,7 +1,7 @@
 # 🧙‍♂️ Distributed Horcruxes
 
-> 🚧 **This repository is subject of constant change.
-> It deals with a problem that has not yet been examined and solved in depth in the context of Zeebe.
+> 🚧 This repository is subject of constant change. It deals with a problem that has not yet been examined and solved in
+> depth in the context of remote process engines (like Zeebe).
 
 ## **Introduction** 🗂
 
