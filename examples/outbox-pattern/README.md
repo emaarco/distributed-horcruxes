@@ -11,17 +11,21 @@ failures and ensures message delivery consistency.
 
 The outbox pattern consists of two main components:
 
-1. **Message Storage**: Messages are stored in a database table with `status=PENDING` as part of the same transaction that triggers the event.
-2. **Message Sender (Scheduler)**: A fast periodic scheduler (200ms interval) processes messages one-at-a-time using pessimistic locking, sending them to Zeebe and marking them as `SENT`.
+1. **Message Storage**: Messages are stored in a database table with `status=PENDING` as part of the same transaction
+   that triggers the event.
+2. **Message Sender (Scheduler)**: A fast periodic scheduler (200ms interval) processes messages one-at-a-time using
+   pessimistic locking, sending them to Zeebe and marking them as `SENT`.
 
 **Key Features:**
+
 - **Status Tracking**: Messages transition from `PENDING` → `SENT`
 - **Automatic Retries**: Failed messages are retried with retry count tracking
 - **Concurrent Scheduler Support**: Uses `SELECT FOR UPDATE SKIP LOCKED` to allow multiple scheduler instances
 - **Audit Trail**: Sent messages remain in the database for historical tracking
 
 > **📘 Please note:** This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times
-> if a failure occurs after sending but before marking as SENT. Your process must be idempotent to handle duplicate messages safely.
+> if a failure occurs after sending but before marking as SENT. Your process must be idempotent to handle duplicate
+> messages safely.
 >
 > Message ordering is based on creation time and may not guarantee strict ordering in all scenarios,
 > especially with concurrent schedulers or retries. Consider additional ordering logic for complex workflows.
@@ -82,11 +86,13 @@ Here:
     - `retryCount`: Number of send attempts (for retry tracking).
     - `createdAt`/`updatedAt`: Timestamps for ordering and tracking.
 
-Messages are saved to the database with `status = PENDING` as part of the service's transaction, ensuring they are only created if the transaction succeeds.
+Messages are saved to the database with `status = PENDING` as part of the service's transaction, ensuring they are only
+created if the transaction succeeds.
 
 ### **Sending Messages with the Scheduler**
 
-The `ProcessEngineOutboxScheduler` processes messages from the outbox using a **one-at-a-time** approach with pessimistic locking:
+The `ProcessEngineOutboxScheduler` processes messages from the outbox using a **one-at-a-time** approach with
+pessimistic locking:
 
 ```kotlin
 @Component
@@ -154,30 +160,36 @@ class ProcessEngineOutboxScheduler(
 **Key Implementation Details:**
 
 - **Scheduler Frequency**: Runs every **200ms** using `fixedDelay` (ensures previous run completes before next starts).
-- **One-at-a-Time Processing**: Uses a `while` loop to process messages one by one, stopping when no more PENDING messages exist.
-- **Pessimistic Locking**: `findFirstByStatusWithLock()` uses `SELECT FOR UPDATE SKIP LOCKED`, allowing multiple scheduler instances to run concurrently without conflicts.
+- **One-at-a-Time Processing**: Uses a `while` loop to process messages one by one, stopping when no more PENDING
+  messages exist.
+- **Pessimistic Locking**: `findFirstByStatusWithLock()` uses `SELECT FOR UPDATE SKIP LOCKED`, allowing multiple
+  scheduler instances to run concurrently without conflicts.
   ```kotlin
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @QueryHints(QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
   @Query("SELECT m FROM process_message m WHERE m.status = :status ORDER BY m.createdAt ASC")
   fun findFirstByStatusWithLock(status: MessageStatus): ProcessMessageEntity?
   ```
-- **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking others.
+- **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking
+  others.
 - **Status Tracking**: Messages transition from `PENDING` → `SENT` (not deleted, for audit trail).
 - **Retry Mechanism**: Failed sends increment `retryCount` and keep status as `PENDING` for automatic retry on next run.
 
 ## **Idempotency Requirements** 🔁
 
-This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times if a failure occurs after sending to Zeebe but before marking the message as SENT in the database.
+This pattern provides **at-least-once delivery** semantics. Messages may be sent multiple times if a failure occurs
+after sending to Zeebe but before marking the message as SENT in the database.
 
 **Design your entire system with idempotency in mind:**
 
-- **Process Definitions**: Use correlation keys and message names that allow Zeebe to deduplicate messages within its TTL window
+- **Process Definitions**: Use correlation keys and message names that allow Zeebe to deduplicate messages within its
+  TTL window
 - **Job Workers**: Implement workers that can safely handle the same job multiple times without side effects
-- **External Systems**: Ensure any external API calls (email, notifications, etc.) are idempotent or use idempotency keys
-- **Database Operations**: Use upserts, conditional updates, or unique constraints to prevent duplicate data
+- **External Systems**: Ensure any external API calls (email, notifications, etc.) are idempotent or use idempotency
+  keys
 
-By designing for idempotency from the start, you ensure the system remains consistent even when messages are delivered multiple times.
+By designing for idempotency from the start, you ensure the system remains consistent even when messages are delivered
+multiple times.
 
 ## **Sequence Flow** 📊
 
@@ -206,7 +218,8 @@ sequenceDiagram
 - **Consistency**: Decouples message creation and sending, ensuring messages are stored reliably as part of the main
   transaction.
 - **Automatic Retry Logic**: Failed messages are automatically retried with retry count tracking.
-- **Concurrent Scheduler Support**: `SELECT FOR UPDATE SKIP LOCKED` allows multiple scheduler instances to run in parallel without conflicts.
+- **Concurrent Scheduler Support**: `SELECT FOR UPDATE SKIP LOCKED` allows multiple scheduler instances to run in
+  parallel without conflicts.
 - **Decoupling**: Sending messages is not tied to the main service logic, reducing coupling and improving scalability.
 - **Fast Processing**: 200ms polling interval ensures low latency for message delivery.
 - **Audit Trail**: Messages are marked as SENT rather than deleted, providing a history of all process interactions.
@@ -215,19 +228,23 @@ sequenceDiagram
 ## **Downsides** ⚠️
 
 - **Processing Order**:
-  Messages are processed in creation time order (`createdAt`), but concurrent schedulers and retries may cause messages to be sent out of order in some edge cases.
+  Messages are processed in creation time order (`createdAt`), but concurrent schedulers and retries may cause messages
+  to be sent out of order in some edge cases.
 
 - **Minimal Latency**:
   While the 200ms polling interval is fast, there's still a delay between message creation and processing (up to 200ms).
 
 - **Unbounded Retries**:
-  Messages that consistently fail will be retried indefinitely. Consider implementing a max retry count or dead-letter queue for production use.
+  Messages that consistently fail will be retried indefinitely. Consider implementing a max retry count or dead-letter
+  queue for production use.
 
 - **Database Growth**:
-  SENT messages remain in the database for audit purposes. You'll need a cleanup strategy to archive or delete old messages.
+  SENT messages remain in the database for audit purposes. You'll need a cleanup strategy to archive or delete old
+  messages.
 
 - **No Message Priority**:
-  All messages are processed in creation order. If you need priority-based processing, additional logic would be required.
+  All messages are processed in creation order. If you need priority-based processing, additional logic would be
+  required.
 
 ## **When to Use This Pattern?**
 
