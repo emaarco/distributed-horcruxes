@@ -11,25 +11,28 @@ failures and ensures message delivery consistency.
 
 The outbox pattern consists of two main components:
 
-1. **Message Storage**: Messages are stored in a database table as part of the same transaction that triggers the event.
-2. **Message Sender (Scheduler)**: A periodic scheduler processes the messages in the outbox, sending them to Zeebe and
-   removing them from the database upon success.
+1. **Message Storage**: Messages are stored in a database table with `status=PENDING` as part of the same transaction that triggers the event.
+2. **Message Sender (Scheduler)**: A fast periodic scheduler (200ms interval) processes messages one-at-a-time using pessimistic locking, sending them to Zeebe and marking them as `SENT`.
 
-> **📘 Please note:** While this pattern introduces retry logic,
-> it does not guarantee that messages can be sent to the engine,
-> and are sent in the correct order.
-> Messages are currently retrieved using `findAll` and sorted by creation time,
-> which works in simple cases but may require additional ordering logic for more complex scenarios.
+**Key Features:**
+- **Status Tracking**: Messages transition from `PENDING` → `SENT`
+- **Automatic Retries**: Failed messages are retried with retry count tracking
+- **Concurrent Scheduler Support**: Uses `SELECT FOR UPDATE SKIP LOCKED` to allow multiple scheduler instances
+- **Audit Trail**: Sent messages remain in the database for historical tracking
+
+> **📘 Please note:** While this pattern provides robust retry logic and concurrent processing support,
+> message ordering is based on creation time and may not guarantee strict ordering in all scenarios,
+> especially with concurrent schedulers or retries. Consider additional ordering logic for complex workflows.
 
 ## **Code Example** 💻
 
 ### **Storing Messages in the Outbox**
 
-The `NewsletterSubscriptionProcessAdapter` stores messages in the outbox table during the transaction:
+The `ProcessMessagePersistenceAdapter` stores messages in the outbox table during the transaction:
 
 ```kotlin
 @Component
-class NewsletterSubscriptionProcessAdapter(
+class ProcessMessagePersistenceAdapter(
     private val repository: ProcessMessageJpaRepository,
 ) : NewsletterSubscriptionProcess {
 
@@ -37,23 +40,33 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun submitForm(id: SubscriptionId) {
         val variables = mapOf("subscriptionId" to id.value.toString())
-        val processMessage = ProcessMessageEntity(
-            messageName = MESSAGE_FORM_SUBMITTED,
-            correlationId = null,
-            variables = objectMapper.writeValueAsString(variables),
+        val processMessage = toProcessMessage(
+            Message_FormSubmitted,
+            id.value.toString(),
+            variables
         )
         repository.save(processMessage)
     }
 
     override fun confirmSubscription(id: SubscriptionId) {
         val variables = mapOf("subscriptionId" to id.value.toString())
-        val processMessage = ProcessMessageEntity(
-            messageName = MESSAGE_RECEIVE_CONFIRMATION,
-            correlationId = null,
-            variables = objectMapper.writeValueAsString(variables),
+        val processMessage = toProcessMessage(
+            Message_SubscriptionConfirmed,
+            id.value.toString(),
+            variables
         )
         repository.save(processMessage)
     }
+
+    private fun toProcessMessage(
+        messageName: String,
+        correlationId: String?,
+        variables: Map<String, Any>,
+    ) = ProcessMessageEntity(
+        messageName = messageName,
+        correlationId = correlationId,
+        variables = objectMapper.writeValueAsString(variables),
+    )
 }
 ```
 
@@ -63,33 +76,60 @@ Here:
     - `messageName`: The name of the message to be sent to Zeebe.
     - `correlationId`: An optional correlation key for Zeebe.
     - `variables`: Process variables serialized as JSON.
+    - `status`: Current message status (PENDING or SENT).
+    - `retryCount`: Number of send attempts (for retry tracking).
+    - `createdAt`/`updatedAt`: Timestamps for ordering and tracking.
 
-Messages are saved to the database as part of the service's transaction, ensuring they are only created if the
-transaction succeeds.
+Messages are saved to the database with `status = PENDING` as part of the service's transaction, ensuring they are only created if the transaction succeeds.
 
 ### **Sending Messages with the Scheduler**
 
-The `ProcessEngineOutboxScheduler` processes messages from the outbox periodically:
+The `ProcessEngineOutboxScheduler` processes messages from the outbox using a **one-at-a-time** approach with pessimistic locking:
 
 ```kotlin
 @Component
 class ProcessEngineOutboxScheduler(
     private val engineApi: ProcessEngineApi,
+    private val transactionManager: PlatformTransactionManager,
     private val repository: ProcessMessageJpaRepository,
 ) {
 
     private val log = KotlinLogging.logger {}
     private val objectMapper = ObjectMapper()
 
-    @Scheduled(fixedRate = 10000) // Runs every 10 seconds
+    @Scheduled(fixedDelay = 200) // Runs every 200ms
     fun sendMessages() {
-        log.info { "Running scheduler to send messages to Zeebe" }
-        val messages = repository.findAll()
-        messages.sortBy { it.createdAt } // Sort messages by creation time
-        messages.forEach { message ->
+        log.debug { "Running scheduler to send messages to zeebe" }
+        var messagesProcessed = 0
+        while (processNextMessage()) messagesProcessed++
+        log.debug { "Scheduler finished. Processed $messagesProcessed messages" }
+    }
+
+    /**
+     * Processes a single message within a transaction using pessimistic locking.
+     * Returns true if a message was processed, false if no messages are available.
+     */
+    private fun processNextMessage() = performInTransaction {
+        val message = repository.findFirstByStatusWithLock(MessageStatus.PENDING)
+        if (message == null) {
+            false
+        } else {
+            trySendMessage(message)
+            true
+        }
+    }
+
+    private fun trySendMessage(message: ProcessMessageEntity) {
+        try {
             sendMessage(message)
-            repository.delete(message) // Remove message after successful processing
-            repository.flush()
+            val sentMessage = message.copy(status = MessageStatus.SENT)
+            repository.save(sentMessage)
+            log.info { "Successfully sent message ${message.messageName}" }
+        } catch (e: Exception) {
+            val retryCount = message.retryCount + 1
+            val retryMessage = message.copy(retryCount = retryCount)
+            repository.save(retryMessage)
+            log.warn(e) { "Retrying message ${message.messageName} (attempt $retryCount)" }
         }
     }
 
@@ -101,20 +141,32 @@ class ProcessEngineOutboxScheduler(
             variables = variables,
         )
     }
+
+    private fun <T> performInTransaction(block: () -> T): T {
+        val template = TransactionTemplate(transactionManager)
+        return template.execute { block() } ?: throw IllegalStateException("Transaction failed")
+    }
 }
 ```
 
-Here:
+**Key Implementation Details:**
 
-- **Scheduler Frequency**: The `@Scheduled` annotation ensures the scheduler runs at a fixed interval (e.g., every 10
-  seconds).
-- **Message Sorting**: Messages are sorted by their creation time before processing, but this does not guarantee order
-  correctness in all scenarios.
-- **Message Deletion**: After successfully sending a message to Zeebe, it is deleted from the database.
+- **Scheduler Frequency**: Runs every **200ms** using `fixedDelay` (ensures previous run completes before next starts).
+- **One-at-a-Time Processing**: Uses a `while` loop to process messages one by one, stopping when no more PENDING messages exist.
+- **Pessimistic Locking**: `findFirstByStatusWithLock()` uses `SELECT FOR UPDATE SKIP LOCKED`, allowing multiple scheduler instances to run concurrently without conflicts.
+  ```kotlin
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @QueryHints(QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
+  @Query("SELECT m FROM process_message m WHERE m.status = :status ORDER BY m.createdAt ASC")
+  fun findFirstByStatusWithLock(status: MessageStatus): ProcessMessageEntity?
+  ```
+- **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking others.
+- **Status Tracking**: Messages transition from `PENDING` → `SENT` (not deleted, for audit trail).
+- **Retry Mechanism**: Failed sends increment `retryCount` and keep status as `PENDING` for automatic retry on next run.
 
 ## **Sequence Flow** 📊
 
-Here’s how the outbox pattern works:
+Here's how the outbox pattern works:
 
 ```mermaid
 sequenceDiagram
@@ -124,32 +176,43 @@ sequenceDiagram
     participant Scheduler
     participant Engine
     Service ->> DB: 1. Save business data
-    Service ->> Outbox: 2. Save message in outbox
-    Scheduler ->> Outbox: 3. Retrieve messages
-    Scheduler ->> Engine: 4. Send message to Zeebe
-    Scheduler ->> Outbox: 5. Delete message
+    Service ->> Outbox: 2. Save message (status=PENDING)
+    Service ->> DB: 3. Commit transaction
+    Scheduler ->> Outbox: 4. SELECT FOR UPDATE SKIP LOCKED (status=PENDING)
+    Outbox -->> Scheduler: 5. Return locked message
+    Scheduler ->> Engine: 6. Send message to Zeebe
+    Scheduler ->> Outbox: 7. Update status=SENT
+    Scheduler ->> DB: 8. Commit transaction
+    Note over Scheduler: On failure: increment retryCount, keep status=PENDING
 ```
 
 ## **Advantages** 🎉
 
 - **Consistency**: Decouples message creation and sending, ensuring messages are stored reliably as part of the main
   transaction.
-- **Retry Logic**: If a message fails to send, the scheduler will attempt to send it in the next run.
+- **Automatic Retry Logic**: Failed messages are automatically retried with retry count tracking.
+- **Concurrent Scheduler Support**: `SELECT FOR UPDATE SKIP LOCKED` allows multiple scheduler instances to run in parallel without conflicts.
 - **Decoupling**: Sending messages is not tied to the main service logic, reducing coupling and improving scalability.
-- **Simplicity**: The implementation is straightforward and relies on standard database and scheduler tools.
+- **Fast Processing**: 200ms polling interval ensures low latency for message delivery.
+- **Audit Trail**: Messages are marked as SENT rather than deleted, providing a history of all process interactions.
+- **Isolation**: Each message is processed in its own transaction, preventing one failure from affecting others.
 
 ## **Downsides** ⚠️
 
-- **No Guaranteed Order**:  
-  Messages are processed in creation time order (`createdAt`), but this may not be sufficient for complex workflows that
-  require strict ordering.
+- **Processing Order**:
+  Messages are processed in creation time order (`createdAt`), but concurrent schedulers and retries may cause messages to be sent out of order in some edge cases.
 
-- **Latency**:  
-  Messages are only sent during the next scheduler run, introducing a delay between message creation and processing.
+- **Minimal Latency**:
+  While the 200ms polling interval is fast, there's still a delay between message creation and processing (up to 200ms).
 
-- **Error Handling Complexity**:  
-  If a message consistently fails to send (e.g., invalid message data), manual intervention is required to fix or remove
-  it.
+- **Unbounded Retries**:
+  Messages that consistently fail will be retried indefinitely. Consider implementing a max retry count or dead-letter queue for production use.
+
+- **Database Growth**:
+  SENT messages remain in the database for audit purposes. You'll need a cleanup strategy to archive or delete old messages.
+
+- **No Message Priority**:
+  All messages are processed in creation order. If you need priority-based processing, additional logic would be required.
 
 ## **When to Use This Pattern?**
 

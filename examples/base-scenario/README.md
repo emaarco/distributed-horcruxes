@@ -29,22 +29,32 @@ class SubscribeToNewsletterService(
 }
 ```
 
-The `ProcessEngineApi` in this example calls Zeebe directly without any safety mechanisms:
+The `NewsletterSubscriptionProcessAdapter` in this example calls Zeebe directly without any safety mechanisms:
 
 ```kotlin
 @Component
-class ProcessEngineApi(private val zeebeClient: ZeebeClient) {
+class NewsletterSubscriptionProcessAdapter(
+    private val zeebeClient: ZeebeClient
+) : NewsletterSubscriptionProcess {
 
-    fun startProcessViaMessage(
-        messageName: String,
-        correlationId: String,
-        variables: Map<String, Any> = emptyMap(),
-    ) {
-        // WARNING: This happens immediately, before DB commit!
+    override fun submitForm(id: SubscriptionId) {
+        // PROBLEM: This call happens immediately, potentially before the DB commit!
+        val variables = mapOf("subscriptionId" to id.value.toString())
+        val allVariables = variables + mapOf("correlationId" to id.value.toString())
         zeebeClient.newPublishMessageCommand()
-            .messageName(messageName)
+            .messageName(Message_FormSubmitted)
             .withoutCorrelationKey()
             .variables(allVariables)
+            .send()
+            .join()
+    }
+
+    override fun confirmSubscription(id: SubscriptionId) {
+        // PROBLEM: This call happens immediately, potentially before the DB commit!
+        zeebeClient.newPublishMessageCommand()
+            .messageName(Message_SubscriptionConfirmed)
+            .correlationKey(id.value.toString())
+            .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()
             .join()
     }
