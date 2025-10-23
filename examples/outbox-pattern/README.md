@@ -148,6 +148,7 @@ class ProcessEngineOutboxScheduler(
         camundaClient.newPublishMessageCommand()
             .messageName(message.messageName)
             .correlationKey(message.correlationId)
+            .messageId(messageId)
             .variables(variables)
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()
@@ -174,9 +175,11 @@ class ProcessEngineOutboxScheduler(
   @Query("SELECT m FROM process_message m WHERE m.status = :status ORDER BY m.createdAt ASC")
   fun findFirstByStatusWithLock(status: MessageStatus): ProcessMessageEntity?
   ```
-- **Direct Zeebe Client Usage**: The scheduler uses `CamundaClient` directly without an intermediate API layer, providing
+- **Direct Zeebe Client Usage**: The scheduler uses `CamundaClient` directly without an intermediate API layer,
+  providing
   direct control over message publishing.
-- **Message Deduplication via messageId**: Each message is sent with a unique `messageId` (combination of `correlationId`
+- **Message Deduplication via messageId**: Each message is sent with a unique `messageId` (combination of
+  `correlationId`
   and `messageName`) to enable Zeebe's built-in deduplication within the message TTL window (10 seconds). This prevents
   duplicate message processing if the scheduler retries a message that was already successfully sent to Zeebe.
 - **Transaction Per Message**: Each message is processed in its own transaction, preventing one failure from blocking
@@ -190,6 +193,7 @@ This pattern provides **at-least-once delivery** semantics. Messages may be sent
 after sending to Zeebe but before marking the message as SENT in the database.
 
 **Built-in Deduplication:**
+
 - Each message is sent with a unique `messageId` (combination of `correlationId` and `messageName`)
 - Zeebe provides automatic deduplication for messages with the same `messageId` within the TTL window (10 seconds)
 - This prevents duplicate message processing if the scheduler retries a message that was already successfully sent
