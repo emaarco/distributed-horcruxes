@@ -37,21 +37,28 @@ services:
       elasticsearch:
         condition: service_healthy
 
-  elasticsearch:
-    image: bitnami/elasticsearch:${ELASTIC_VERSION}
-    container_name: dh-elasticsearch
+  elasticsearch: # https://hub.docker.com/_/elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    container_name: elasticsearch
     ports:
-      - '9200:9200'
-      - '9300:9300'
-    volumes:
-      - 'elastic:/bitnami/elasticsearch/data'
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      # allow running with low disk space
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      # Disable noisy deprecation logs, see https://github.com/camunda/camunda/issues/26285
+      - logger.org.elasticsearch.deprecation="OFF"
+    restart: unless-stopped
     healthcheck:
-      # In local environments, we allow both green and yellow health statuses.
-      # Yellow means the cluster is operational, but some replicas are unassigned.
-      # This carries a risk of data loss if a node fails but is acceptable for local development.
-      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cat/health | grep -Eq 'green|yellow'" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cat/health | grep -q green" ]
       interval: 1s
-      retries: 90
+      retries: 30
+      start_period: 30s
+      timeout: 1s
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
     networks:
       - camunda
 
