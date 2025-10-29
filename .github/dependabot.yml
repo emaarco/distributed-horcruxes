@@ -14,3 +14,10 @@ updates:
           - "patch"
           - "minor"
           - "major"
+
+  # Config for Docker Compose dependencies
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/stack"
+    schedule:
+      interval: "weekly"
