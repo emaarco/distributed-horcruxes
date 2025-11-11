@@ -143,12 +143,21 @@ sequenceDiagram
     participant DB
     participant Engine
     participant Worker
+
     Service ->> DB: 1. Save subscription (uncommitted)
     Service ->> Engine: 2. Start process (immediate!)
     Engine ->> Worker: 3. Activate job
-    Worker ->> DB: 4. Try to load subscription
-    Note over Worker,DB: PROBLEM: Data might not be visible!
-    Service ->> DB: 5. Commit transaction (too late!)
+
+    alt Worker executes before commit (PROBLEM)
+        Worker ->> DB: 4a. Try to load subscription
+        DB -->> Worker: 4b. Data not visible (uncommitted)
+        Note over Worker: Worker fails - data not available
+    else Worker executes after commit (LUCKY)
+        Service ->> DB: 4a. Commit transaction
+        Worker ->> DB: 4b. Load subscription
+        DB -->> Worker: 4c. Data available
+        Note over Worker: Worker succeeds (but timing is unreliable)
+    end
 ```
 
 ## **Why This Matters** 💡
