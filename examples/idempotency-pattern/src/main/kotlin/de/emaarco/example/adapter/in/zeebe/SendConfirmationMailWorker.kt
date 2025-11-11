@@ -1,5 +1,6 @@
 package de.emaarco.example.adapter.`in`.zeebe
 
+import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.TaskTypes
 import de.emaarco.example.application.port.`in`.SendConfirmationMailUseCase
 import de.emaarco.example.domain.OperationId
 import de.emaarco.example.domain.SubscriptionId
@@ -17,7 +18,7 @@ class SendConfirmationMailWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = "newsletter.sendConfirmationMail")
+    @JobWorker(type = TaskTypes.Activity_SendConfirmationMail)
     fun sendConfirmationMail(
         job: ActivatedJob,
         @Variable("subscriptionId") subscriptionId: String
