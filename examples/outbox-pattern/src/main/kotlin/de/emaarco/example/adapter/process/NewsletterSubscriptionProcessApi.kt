@@ -43,11 +43,11 @@ object NewsletterSubscriptionProcessApi {
   }
 
   object TaskTypes {
-    val Activity_AbortRegistration: String = "newsletter.abortRegistration"
+    const val Activity_AbortRegistration: String = "newsletter.abortRegistration"
 
-    val Activity_SendWelcomeMail: String = "newsletter.sendWelcomeMail"
+    const val Activity_SendWelcomeMail: String = "newsletter.sendWelcomeMail"
 
-    val Activity_SendConfirmationMail: String = "newsletter.sendConfirmationMail"
+    const val Activity_SendConfirmationMail: String = "newsletter.sendConfirmationMail"
   }
 
   object Timers {
