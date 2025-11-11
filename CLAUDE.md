@@ -61,6 +61,45 @@ gradle generateBpmnModels
 # Generated output: examples/*/src/main/kotlin/de/emaarco/example/adapter/process/
 ```
 
+### Creating GitHub Issues
+When creating issues for this repository, follow these guidelines:
+
+```bash
+# Create issues using gh CLI
+gh issue create --title "..." --body "..."
+```
+
+**Principles**:
+- **KISS** (Keep It Simple, Stupid) - Keep issues compact and focused
+- **User Story Format** - Titles should be user stories: "As a [role], I want [feature] so that [benefit]"
+- **Context over Checklists** - Explain **what** the problem is and **why** it matters, not how to implement it
+- **Solution Concept** - Give developers an idea of how to approach the problem
+- **References** - Include links to relevant docs, examples, or related code
+
+**Structure**:
+- **User Story** - Who wants what and why
+- **Problem** - Context about the issue and why it needs solving
+- **Solution Concept** - High-level approach or idea (not a detailed checklist)
+- **References** - Links to related code, docs, or examples
+
+**Example**:
+```
+Title: As a developer, I want [feature] to [achieve goal]
+
+Body:
+## User Story
+As a [role], I want [feature], so that [benefit].
+
+## Problem
+[What's wrong? Why does it matter?]
+
+## Solution Concept
+[High-level idea of how to solve it]
+
+## References
+- Related code/docs
+```
+
 ## Architecture
 
 ### High-Level Structure
