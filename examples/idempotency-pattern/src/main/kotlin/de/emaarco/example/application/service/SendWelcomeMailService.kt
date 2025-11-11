@@ -19,7 +19,7 @@ class SendWelcomeMailService(
     private val log = KotlinLogging.logger {}
 
     override fun sendWelcomeMail(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId.value)) {
+        if (processedOperationRepository.existsById(operationId)) {
             log.info { "Skipping already processed operation: ${operationId.value}" }
             return
         }
@@ -27,6 +27,6 @@ class SendWelcomeMailService(
         val subscription = repository.find(subscriptionId)
         log.info { "Sending welcome mail to ${subscription.email}" }
 
-        processedOperationRepository.save(operationId.value)
+        processedOperationRepository.save(operationId)
     }
 }

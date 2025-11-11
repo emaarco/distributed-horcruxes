@@ -19,7 +19,7 @@ class SendConfirmationMailService(
     private val log = KotlinLogging.logger {}
 
     override fun sendConfirmationMail(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId.value)) {
+        if (processedOperationRepository.existsById(operationId)) {
             log.info { "Skipping already processed operation: ${operationId.value}" }
             return
         }
@@ -27,6 +27,6 @@ class SendConfirmationMailService(
         val subscription = repository.find(subscriptionId)
         log.info { "Sending confirmation mail to ${subscription.email}" }
 
-        processedOperationRepository.save(operationId.value)
+        processedOperationRepository.save(operationId)
     }
 }

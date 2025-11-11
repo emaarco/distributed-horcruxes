@@ -19,7 +19,7 @@ class AbortSubscriptionService(
     private val log = KotlinLogging.logger {}
 
     override fun abort(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId.value)) {
+        if (processedOperationRepository.existsById(operationId)) {
             log.info { "Skipping already processed operation: ${operationId.value}" }
             return
         }
@@ -29,6 +29,6 @@ class AbortSubscriptionService(
         repository.save(subscription)
         log.info { "Aborted subscription-registration ${subscription.id}" }
 
-        processedOperationRepository.save(operationId.value)
+        processedOperationRepository.save(operationId)
     }
 }

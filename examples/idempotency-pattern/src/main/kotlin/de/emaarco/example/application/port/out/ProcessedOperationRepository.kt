@@ -1,6 +1,8 @@
 package de.emaarco.example.application.port.out
 
+import de.emaarco.example.domain.OperationId
+
 interface ProcessedOperationRepository {
-    fun existsById(operationId: String): Boolean
-    fun save(operationId: String)
+    fun existsById(operationId: OperationId): Boolean
+    fun save(operationId: OperationId)
 }
