@@ -22,7 +22,8 @@ to handle these distributed transaction problems effectively in a Spring Boot an
 
 ## **The Distributed Transaction Problem** 🕵️
 
-Distributed transactions happen when a single operation spans multiple systems, such as:
+Distributed transactions are a generic problem in software architecture that occurs when a single operation spans
+multiple systems, such as:
 
 - A **database** for storing application data.
 - A **process engine** like Zeebe for orchestrating workflows.
@@ -36,11 +37,15 @@ Problems arise when we can’t guarantee that all systems succeed or fail togeth
 
 ## **The Challenge with Zeebe** ⚙️
 
-Zeebe is a powerful process engine, but it assumes that tasks can start as soon as they are triggered. If you notify
-Zeebe before your database transaction is committed, or if your transaction fails afterward, you risk creating
-inconsistencies.
+Zeebe, as a distributed system itself, is designed for high availability and scalability.
+This means it manages its own state independently from your application's database,
+creating a boundary between two systems that must remain synchronized.
 
-For example:
+When coordinating these two independent systems, various challenges emerge.
+One of the most common issues is a **timing problem**: Zeebe assumes that tasks can start as soon as they are triggered,
+but your database transaction might not be committed yet—or might fail during the commit.
+
+Consider this simple scenario:
 
 1. You save data to the database and immediately notify Zeebe to start a process.
 2. If the database transaction fails, Zeebe has already started tasks based on incomplete or incorrect data.
@@ -52,7 +57,7 @@ Without proper strategies, this can cause:
 - Retrying the same operation to produce duplicates.
 
 > 💡 **Want to understand these challenges in more detail?**<br/>
-> Check out the [detailed breakdown of distributed transaction challenges](challanges.md),
+> Check out the [detailed breakdown of distributed transaction challenges](CHALLENGES.md),
 > which includes examples, diagrams, and a reference architecture to explain these problems in depth.
 
 ## **How Do We Solve This?** 🛠
