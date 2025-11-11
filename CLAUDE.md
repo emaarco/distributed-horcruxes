@@ -24,9 +24,8 @@ cd stack && docker-compose up
 gradle build
 
 # Build specific example
-gradle :examples:base-scenario:build
-gradle :examples:after-transaction:build
-gradle :examples:outbox-pattern:build
+gradle :examples:<pattern-name>:build
+# Available: base-scenario, after-transaction, outbox-pattern, idempotency-pattern
 
 # Run tests
 gradle test
@@ -36,15 +35,17 @@ gradle clean
 ```
 
 ### Running Examples
-Each example is a Spring Boot application. Run the main class:
-- Base Scenario: `examples/base-scenario/src/main/kotlin/de/emaarco/example/ExampleApplication.kt` (port 8082)
-- After-Transaction: `examples/after-transaction/src/main/kotlin/de/emaarco/example/ExampleApplication.kt` (port 8081)
-- Outbox Pattern: `examples/outbox-pattern/src/main/kotlin/de/emaarco/example/ExampleApplication.kt`
+Each example is a Spring Boot application on port 8081 (except base-scenario on 8082).
 
-All examples connect to:
+Run the main class:
+- `examples/<pattern-name>/src/main/kotlin/de/emaarco/example/ExampleApplication.kt`
+
+Available patterns: `base-scenario`, `after-transaction`, `outbox-pattern`, `idempotency-pattern`
+
+All connect to:
 - Zeebe gRPC: localhost:26500
 - Zeebe REST: localhost:9600
-- PostgreSQL: localhost:5432 (database: example_database, credentials: admin/admin)
+- PostgreSQL: localhost:5432 (database: example_database, user: admin/admin)
 
 ### Interacting with Examples
 Use Bruno API client with files in `bruno/` directory:
@@ -80,35 +81,29 @@ application/
 domain/            - Domain entities and value objects
 ```
 
-**Key architectural point**: Transactions are defined at the service layer. Services coordinate database operations and process engine interactions through port interfaces, which is where the distributed transaction challenge occurs.
+**Key point**: Use `@Transactional` at service layer. Idempotency checks happen there too.
 
 ### Pattern Implementations
 
-#### Base Scenario (`examples/base-scenario`)
-- **Purpose**: Demonstrates the distributed transaction problem WITHOUT any solution
-- **Core class**: `ProcessEngineApi` in `adapter/out/zeebe/` - calls Zeebe directly
-- **Mechanism**: Naive implementation that calls Zeebe immediately within the transaction
-- **Problems demonstrated**:
-  - Premature execution (process starts before DB commit)
-  - Out-of-sync states (DB fails after notifying Zeebe)
-  - Race conditions (workers see uncommitted data)
-- **Trade-off**: Simple but broken - DO NOT use in production
-- **Use case**: Understanding what goes wrong and why solutions are needed
+| Pattern | Problem Solved | How It Works | Trade-off |
+|---------|---------------|--------------|-----------|
+| **Base Scenario** | None (shows the problem) | Calls Zeebe during transaction | ❌ Broken - don't use |
+| **After-Transaction** | Premature execution | Callbacks after DB commit | ✅ Fast, ❌ No retry |
+| **Outbox Pattern** | Transaction coordination | DB table + background scheduler | ✅ Reliable + retry, ❌ Latency |
+| **Idempotency Pattern** | Duplicate executions | Track completed operations | ✅ Prevents duplicates |
 
-#### After-Transaction Pattern (`examples/after-transaction`)
-- **Core class**: `ProcessTransactionManager` in `adapter/out/zeebe/`
-- **Mechanism**: Uses Spring's `TransactionSynchronizationManager` to register callbacks that execute after database commit
-- **Pre-commit check**: Validates Zeebe broker health before committing
-- **Post-commit**: Sends message/starts process only after database transaction succeeds
-- **Trade-off**: Fast but no retry logic if post-commit fails
+#### Base Scenario (`examples/base-scenario`)
+Shows what goes wrong: process starts before DB commits, causing race conditions and inconsistent state.
+
+#### After-Transaction (`examples/after-transaction`)
+Uses Spring's `TransactionSynchronizationManager` to send Zeebe messages only after DB commits successfully.
 
 #### Outbox Pattern (`examples/outbox-pattern`)
-- **Core classes**:
-  - `ProcessMessageEntity` - Outbox table entity in `adapter/out/db/message/`
-  - `ProcessEngineOutboxScheduler` - Polls and sends messages
-- **Mechanism**: Saves messages to database table in same transaction, scheduler processes them periodically
-- **Retry**: Scheduler retries failed messages on next run (every 10 seconds)
-- **Trade-off**: Reliable with retries but introduces latency
+Saves messages to DB table in same transaction. Background scheduler sends them to Zeebe with retries.
+
+#### Idempotency Pattern (`examples/idempotency-pattern`)
+Services check `processed_operations` table before executing. Uses composite key: `subscriptionId-elementId`.
+**Pattern**: Check if processed → Execute → Record completion (all in one transaction).
 
 ### Shared Domain Model
 All examples use the same newsletter subscription process:
@@ -135,12 +130,16 @@ The BPMN model (`configuration/newsletter.bpmn`) is shared across both examples 
 There are currently no automated tests in this repository. When implementing features, focus on manual testing via the Bruno API files and monitoring in Operate.
 
 ### Distributed Transaction Challenges
-See `challanges.md` for detailed explanation of the six main problems:
-1. Premature execution (engine starts before DB commit)
-2. Out-of-sync states (DB fails after notifying engine)
-3. Conflicting data (tasks execute out of order)
-4. Duplicate calls (retries create duplicates)
-5. Network issues (job complete fails to reach engine)
-6. Task no longer available (engine cancelled task before worker completed)
 
-Each pattern addresses these challenges with different trade-offs in terms of speed, reliability, and complexity.
+Six main problems (see `challenges.md` for details):
+1. Premature execution - Process starts before DB commits
+2. Out-of-sync states - DB fails after notifying Zeebe
+3. Conflicting data - Tasks execute out of order
+4. Duplicate calls - Retries create duplicates
+5. Network issues - Job completion lost
+6. Task unavailable - Worker completes cancelled task
+
+**Which pattern solves what?**
+- After-Transaction: #1, #2
+- Outbox Pattern: #1, #2, #3 (with retries)
+- Idempotency Pattern: #4

@@ -135,7 +135,7 @@ The solution uses a layered architecture to separate concerns:
 
 ## **Sequence Flow** 📊
 
-Here’s how the process works:
+Here's how the process works:
 
 ```mermaid
 sequenceDiagram
@@ -143,11 +143,22 @@ sequenceDiagram
     participant DB
     participant Transaction Manager
     participant Engine
-    Service ->> Service: 1. do something
-    Service ->> Transaction Manager: 2. register start process hook
-    Transaction Manager ->> Engine: 3. precheck (before commit)
-    Service ->> DB: 4. commit transaction
-    Transaction Manager ->> Engine: 5. start process (after commit)
+
+    Service ->> Service: 1. Execute business logic
+    Service ->> Transaction Manager: 2. Register start process hook
+
+    alt Zeebe broker healthy (SUCCESS)
+        Transaction Manager ->> Engine: 3a. Precheck broker health
+        Engine -->> Transaction Manager: 3b. Healthy
+        Service ->> DB: 4. Commit transaction
+        Transaction Manager ->> Engine: 5. Start process (after commit)
+    else Zeebe broker unhealthy (FAILURE)
+        Transaction Manager ->> Engine: 3a. Precheck broker health
+        Engine -->> Transaction Manager: 3b. Unhealthy/unavailable
+        Transaction Manager -->> Service: 4. Throw exception
+        Service ->> DB: 5. Rollback transaction
+        Note over Service,DB: Database changes rolled back
+    end
 ```
 
 ## **Advantages** 🎉

@@ -73,6 +73,11 @@ This avoids notifying Zeebe with incomplete or uncommitted data.
 Save Zeebe messages in an "outbox" table as part of the same database transaction.
 A scheduler or worker then reliably sends these messages to Zeebe after the transaction is complete.
 
+### **3. Idempotency Pattern** 🔁
+
+Track completed operations to prevent duplicate processing when Zeebe retries job workers.
+Uses a database table to record which operations have been completed.
+
 These patterns are widely used in distributed systems
 and provide different trade-offs between simplicity, reliability, and performance.
 
@@ -86,6 +91,8 @@ This repository contains examples that demonstrate both the problem and proven s
   Ensuring Zeebe interactions occur only after the transaction commits.
 - 📦 [**Outbox Pattern**](./examples/outbox-pattern/README.md):
   Using a database outbox and scheduler for reliable message delivery.
+- 🔁 [**Idempotency Pattern**](./examples/idempotency-pattern/README.md):
+  Preventing duplicate processing from Zeebe's at-least-once delivery semantics.
 
 ## **Setup** ⚙️
 
@@ -115,7 +122,7 @@ To interact with the process, you need to send requests to the REST API provided
 
 **4: Monitor the Processes**:  
 Once the infrastructure is running, you can monitor and debug workflows using **Operate**
-at [http://localhost:9091](http://localhost:9091).
+at [http://localhost:9091/operate](http://localhost:9091/operate).
 The credentials are `demo/demo`.
 
 ## **Contribute to This Project** 🤝

@@ -217,18 +217,27 @@ Here's how the outbox pattern works:
 sequenceDiagram
     participant Service
     participant DB
-    participant Outbox
     participant Scheduler
     participant Zeebe
+
     Service ->> DB: 1. Save business data
-    Service ->> Outbox: 2. Save message (status=PENDING)
+    Service ->> DB: 2. Save message to outbox (status=PENDING)
     Service ->> DB: 3. Commit transaction
-    Scheduler ->> Outbox: 4. SELECT FOR UPDATE SKIP LOCKED (status=PENDING)
-    Outbox -->> Scheduler: 5. Return locked message
-    Scheduler ->> Zeebe: 6. Send message to Zeebe (with messageId)
-    Scheduler ->> Outbox: 7. Update status=SENT
-    Scheduler ->> DB: 8. Commit transaction
-    Note over Scheduler: On failure: increment retryCount, keep status=PENDING
+    Scheduler ->> DB: 4. SELECT FOR UPDATE SKIP LOCKED (status=PENDING)
+    DB -->> Scheduler: 5. Return locked message
+
+    alt Message sent successfully (SUCCESS)
+        Scheduler ->> Zeebe: 6a. Send message (with messageId)
+        Zeebe -->> Scheduler: 6b. Success
+        Scheduler ->> DB: 7. Update status=SENT
+        Scheduler ->> DB: 8. Commit transaction
+    else Message send fails (RETRY)
+        Scheduler ->> Zeebe: 6a. Send message (with messageId)
+        Zeebe -->> Scheduler: 6b. Failure (network/unavailable)
+        Scheduler ->> DB: 7. Increment retryCount, keep status=PENDING
+        Scheduler ->> DB: 8. Commit transaction
+        Note over Scheduler: Message will be retried on next run
+    end
 ```
 
 ## **Advantages** 🎉
