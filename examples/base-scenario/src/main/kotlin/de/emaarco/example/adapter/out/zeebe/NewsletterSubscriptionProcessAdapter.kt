@@ -1,7 +1,7 @@
 package de.emaarco.example.adapter.out.zeebe
 
-import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_FormSubmitted
-import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_SubscriptionConfirmed
+import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_FORM_SUBMITTED
+import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_SUBSCRIPTION_CONFIRMED
 import de.emaarco.example.application.port.out.NewsletterSubscriptionProcess
 import de.emaarco.example.domain.SubscriptionId
 import io.camunda.client.CamundaClient
@@ -26,7 +26,7 @@ class NewsletterSubscriptionProcessAdapter(
         val variables = mapOf("subscriptionId" to id.value.toString())
         val allVariables = variables + mapOf("correlationId" to id.value.toString())
         camundaClient.newPublishMessageCommand()
-            .messageName(Message_FormSubmitted)
+            .messageName(MESSAGE_FORM_SUBMITTED)
             .withoutCorrelationKey()
             .variables(allVariables)
             .send()
@@ -36,7 +36,7 @@ class NewsletterSubscriptionProcessAdapter(
     override fun confirmSubscription(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
         camundaClient.newPublishMessageCommand()
-            .messageName(Message_SubscriptionConfirmed)
+            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED)
             .correlationKey(id.value.toString())
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()

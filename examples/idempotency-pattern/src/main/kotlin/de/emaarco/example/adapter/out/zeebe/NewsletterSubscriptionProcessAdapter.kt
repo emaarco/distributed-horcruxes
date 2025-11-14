@@ -1,7 +1,7 @@
 package de.emaarco.example.adapter.out.zeebe
 
-import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_FormSubmitted
-import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.Message_SubscriptionConfirmed
+import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_FORM_SUBMITTED
+import de.emaarco.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_SUBSCRIPTION_CONFIRMED
 import de.emaarco.example.application.port.out.NewsletterSubscriptionProcess
 import de.emaarco.example.domain.SubscriptionId
 import io.camunda.client.CamundaClient
@@ -16,10 +16,10 @@ class NewsletterSubscriptionProcessAdapter(
     override fun submitForm(id: SubscriptionId) {
         val correlationKey = id.value.toString()
         val variables = mapOf("subscriptionId" to correlationKey)
-        val messageId = "$correlationKey-$Message_FormSubmitted"
+        val messageId = "$correlationKey-$MESSAGE_FORM_SUBMITTED"
 
         camundaClient.newPublishMessageCommand()
-            .messageName(Message_FormSubmitted)
+            .messageName(MESSAGE_FORM_SUBMITTED)
             .correlationKey(correlationKey)
             .messageId(messageId)
             .variables(variables)
@@ -30,10 +30,10 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun confirmSubscription(id: SubscriptionId) {
         val correlationKey = id.value.toString()
-        val messageId = "$correlationKey-$Message_SubscriptionConfirmed"
+        val messageId = "$correlationKey-$MESSAGE_SUBSCRIPTION_CONFIRMED"
 
         camundaClient.newPublishMessageCommand()
-            .messageName(Message_SubscriptionConfirmed)
+            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED)
             .correlationKey(correlationKey)
             .messageId(messageId)
             .timeToLive(Duration.ofSeconds(10))

@@ -18,7 +18,7 @@ class AbortSubscriptionWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.Activity_AbortRegistration)
+    @JobWorker(type = TaskTypes.ACTIVITY_ABORT_REGISTRATION)
     fun abortRegistration(
         job: ActivatedJob,
         @Variable("subscriptionId") subscriptionId: String

@@ -14,7 +14,7 @@ class SendWelcomeMailWorker(private val useCase: SendWelcomeMailUseCase) {
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.Activity_SendWelcomeMail)
+    @JobWorker(type = TaskTypes.ACTIVITY_SEND_WELCOME_MAIL)
     fun sendConfirmationMail(@Variable("subscriptionId") subscriptionId: String) {
         log.debug { "Received Zeebe job to send welcome mail: $subscriptionId" }
         useCase.sendWelcomeMail(SubscriptionId(UUID.fromString(subscriptionId)))

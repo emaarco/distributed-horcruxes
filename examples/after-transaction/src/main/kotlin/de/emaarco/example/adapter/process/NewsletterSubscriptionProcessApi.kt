@@ -10,53 +10,58 @@ object NewsletterSubscriptionProcessApi {
   const val PROCESS_ID: String = "newsletter-subscription"
 
   object Elements {
-    const val Timer_After3Days: String = "Timer_After3Days"
+    const val TIMER_AFTER_3_DAYS: String = "Timer_After3Days"
 
-    const val Timer_EveryDay: String = "Timer_EveryDay"
+    const val TIMER_EVERY_DAY: String = "Timer_EveryDay"
 
-    const val Activity_ConfirmRegistration: String = "Activity_ConfirmRegistration"
+    const val ACTIVITY_CONFIRM_REGISTRATION: String = "Activity_ConfirmRegistration"
 
-    const val Activity_18erb45: String = "Activity_18erb45"
+    const val ACTIVITY_18_ERB_45: String = "Activity_18erb45"
 
-    const val EndEvent_RegistrationAborted: String = "EndEvent_RegistrationAborted"
+    const val END_EVENT_REGISTRATION_ABORTED: String = "EndEvent_RegistrationAborted"
 
-    const val EndEvent_RegistrationCompleted: String = "EndEvent_RegistrationCompleted"
+    const val END_EVENT_REGISTRATION_COMPLETED: String = "EndEvent_RegistrationCompleted"
 
-    const val EndEvent_SubscriptionConfirmed: String = "EndEvent_SubscriptionConfirmed"
+    const val END_EVENT_SUBSCRIPTION_CONFIRMED: String = "EndEvent_SubscriptionConfirmed"
 
-    const val Activity_AbortRegistration: String = "Activity_AbortRegistration"
+    const val ACTIVITY_ABORT_REGISTRATION: String = "Activity_AbortRegistration"
 
-    const val Activity_SendWelcomeMail: String = "Activity_SendWelcomeMail"
+    const val ACTIVITY_SEND_WELCOME_MAIL: String = "Activity_SendWelcomeMail"
 
-    const val Activity_SendConfirmationMail: String = "Activity_SendConfirmationMail"
+    const val ACTIVITY_SEND_CONFIRMATION_MAIL: String = "Activity_SendConfirmationMail"
 
-    const val StartEvent_SubmitRegistrationForm: String = "StartEvent_SubmitRegistrationForm"
+    const val START_EVENT_SUBMIT_REGISTRATION_FORM: String =
+        "StartEvent_SubmitRegistrationForm"
 
-    const val StartEvent_RequestReceived: String = "StartEvent_RequestReceived"
+    const val START_EVENT_REQUEST_RECEIVED: String = "StartEvent_RequestReceived"
   }
 
   object Messages {
-    const val Message_FormSubmitted: String = "Message_FormSubmitted"
+    const val MESSAGE_FORM_SUBMITTED: String = "Message_FormSubmitted"
 
-    const val Message_SubscriptionConfirmed: String = "Message_SubscriptionConfirmed"
+    const val MESSAGE_SUBSCRIPTION_CONFIRMED: String = "Message_SubscriptionConfirmed"
   }
 
   object TaskTypes {
-    const val Activity_AbortRegistration: String = "newsletter.abortRegistration"
+    const val ACTIVITY_ABORT_REGISTRATION: String = "newsletter.abortRegistration"
 
-    const val Activity_SendWelcomeMail: String = "newsletter.sendWelcomeMail"
+    const val ACTIVITY_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
 
-    const val Activity_SendConfirmationMail: String = "newsletter.sendConfirmationMail"
+    const val ACTIVITY_SEND_CONFIRMATION_MAIL: String = "newsletter.sendConfirmationMail"
   }
 
   object Timers {
-    val Timer_After3Days: BpmnTimer = BpmnTimer("Duration", "PT2M30S")
+    val TIMER_AFTER_3_DAYS: BpmnTimer = BpmnTimer("Duration", "PT2M30S")
 
-    val Timer_EveryDay: BpmnTimer = BpmnTimer("Duration", "PT1M")
+    val TIMER_EVERY_DAY: BpmnTimer = BpmnTimer("Duration", "PT1M")
 
     data class BpmnTimer(
       val type: String,
       val timerValue: String,
     )
+  }
+
+  object Variables {
+    const val SUBSCRIPTION_ID: String = "subscriptionId"
   }
 }
