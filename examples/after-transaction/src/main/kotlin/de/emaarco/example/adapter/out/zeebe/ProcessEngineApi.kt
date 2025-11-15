@@ -8,14 +8,14 @@ import java.time.temporal.ChronoUnit
 @Component
 class ProcessEngineApi(
     private val camundaClient: CamundaClient,
-    private val manager: ProcessTransactionManager
+    private val manager: ProcessEngineSynchronizer
 ) {
 
     fun startProcessViaMessage(
         messageName: String,
         correlationId: String,
         variables: Map<String, Any> = emptyMap(),
-    ) = manager.executeAfterCommit {
+    ) = manager.executeEngineCall {
         val allVariables = variables + mapOf("correlationId" to correlationId)
         camundaClient.newPublishMessageCommand()
             .messageName(messageName)
@@ -29,7 +29,7 @@ class ProcessEngineApi(
         messageName: String,
         correlationId: String,
         variables: Map<String, Any> = emptyMap(),
-    ) = manager.executeAfterCommit {
+    ) = manager.executeEngineCall {
         camundaClient.newPublishMessageCommand()
             .messageName(messageName)
             .correlationKey(correlationId)

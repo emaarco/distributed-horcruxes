@@ -204,3 +204,17 @@ Six main problems (see `challenges.md` for details):
 - After-Transaction: #1, #2
 - Outbox Pattern: #1, #2, #3 (with retries)
 - Idempotency Pattern: #4
+
+### Productivity Tips:
+
+- When working with GitHub, you can use the gh cli tool
+- Use context7 for code generation & general questions whenever working with specific frameworks or libraries.
+
+### GitHub
+
+- Keep commit messages and body short and descriptive.
+- When writing pull requests or issues, also write compact. Focus on what changed and why, not on technical details and
+  adding bloat like author notes and co.
+- When writing issues, always write a summary, the current state, and the desired state. moreover, give a high-level
+  overview of the technical details - and whether stuff is breaking or not. Each of these is a compact subchapter. Focus
+  on behavior, not implementation. Avoid specific file names, line numbers, or code paths.
