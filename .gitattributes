@@ -1,2 +1,0 @@
-# Exclude Bruno API files from language statistics
-*.bru linguist-detectable=false
