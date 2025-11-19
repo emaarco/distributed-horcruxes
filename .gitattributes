@@ -1,2 +1,2 @@
 # Exclude Bruno API files from language statistics
-*.bru linguist-vendored
+*.bru linguist-documentation
