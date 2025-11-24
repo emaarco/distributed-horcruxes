@@ -115,6 +115,53 @@ class SendConfirmationMailWorker(
 - Example: `550e8400-e29b-41d4-a716-446655440000-Activity_SendConfirmationMail`
 - Business-driven: Tied to domain entity (subscription) and BPMN element, not internal Zeebe job keys
 
+### **Counter Example: Solving the Idempotency Problem** 🔢
+
+This example also includes a subscription counter that demonstrates how the idempotency pattern solves the duplicate processing problem shown in the [base-scenario](../base-scenario/README.md#the-counter-idempotency-problem).
+
+**The Service Implementation:**
+
+```kotlin
+@Service
+@Transactional
+class IncrementSubscriptionCounterService(
+    private val counterRepository: SubscriptionCounterRepository,
+    private val processedOperationRepository: ProcessedOperationRepository
+) : IncrementSubscriptionCounterUseCase {
+
+    override fun incrementCounter(subscriptionId: SubscriptionId, operationId: OperationId) {
+        if (processedOperationRepository.existsById(operationId)) {
+            log.info { "Skipping already processed operation: ${operationId.value}" }
+            return  // Early exit - operation already completed
+        }
+
+        val counter = counterRepository.find()
+        val updatedCounter = counter.increment()
+        counterRepository.save(updatedCounter)
+
+        processedOperationRepository.save(operationId)  // Mark as completed
+    }
+}
+```
+
+**How It Works:**
+
+1. Worker listens to `newsletter.registrationCompleted` message end event
+2. Constructs `OperationId` from `subscriptionId-elementId`
+3. Service checks if this exact operation was already processed
+4. If already processed: Skip increment (idempotent behavior)
+5. If not processed: Increment counter AND record operation (atomic)
+
+**The Result:**
+
+Unlike the base-scenario where retries cause multiple increments, here the counter increments **exactly once** per registration completion, regardless of how many times Zeebe retries the job. The operation log prevents duplicate increments.
+
+**Contrast with Base-Scenario:**
+- **Base-scenario**: Retries → Multiple increments → Wrong counter value
+- **Idempotency-pattern**: Retries → Skip already processed → Correct counter value
+
+This demonstrates how tracking completed operations makes non-idempotent operations (like incrementing) safe in distributed systems with at-least-once delivery semantics.
+
 ## **Sequence Flow** 📊
 
 Here's how the idempotency pattern works:
