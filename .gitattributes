@@ -1,0 +1,37 @@
+# Git LFS and line ending configuration
+* text=auto
+
+# Source code - enforce LF line endings
+*.kt text eol=lf
+*.java text eol=lf
+*.gradle text eol=lf
+*.kts text eol=lf
+
+# Documentation - mark as documentation for GitHub linguist
+*.md linguist-documentation
+
+# Bruno API files - mark as vendored (not source code)
+*.bru linguist-vendored
+
+# Configuration files
+*.yml linguist-generated
+*.yaml linguist-generated
+*.properties linguist-generated
+
+# Gradle wrapper - mark as vendored
+gradlew linguist-vendored
+gradlew.bat linguist-vendored
+gradle/wrapper/* linguist-vendored
+
+# Build and generated directories
+build/** linguist-generated
+.gradle/** linguist-generated
+.idea/** linguist-generated
+.kotlin/** linguist-generated
+
+# Assets and images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
