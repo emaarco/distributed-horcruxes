@@ -20,7 +20,7 @@ class RegistrationCompletedWorker(
     fun handleRegistrationCompleted(@Variable("subscriptionId") subscriptionId: String) {
         log.debug { "Received Zeebe job for registration completed: $subscriptionId" }
         useCase.incrementCounter(SubscriptionId(UUID.fromString(subscriptionId)))
-        if (Math.random() > 0.8)
+        if (Math.random() > 0.8) {
             RuntimeException("Simulating error on acknowledging, leading to idempotency problem")
         }
     }
