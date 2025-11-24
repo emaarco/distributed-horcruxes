@@ -170,6 +170,55 @@ Understanding these problems is crucial because:
 3. **They cause data inconsistency** - Database and process engine states drift apart
 4. **They require proper solutions** - After-transaction hooks or outbox patterns
 
+## **The Counter Idempotency Problem** 🔢
+
+This example includes a subscription counter that demonstrates another critical distributed transaction problem: **non-idempotent operations with retries**.
+
+### **The Scenario**
+
+When a newsletter registration completes, the process ends with a message end event (`newsletter.registrationCompleted`). A worker listens to this event and increments an in-memory subscription counter:
+
+```kotlin
+@JobWorker(type = "newsletter.registrationCompleted")
+fun handleRegistrationCompleted(@Variable("subscriptionId") subscriptionId: String) {
+    useCase.incrementCounter(subscriptionId)
+    // Randomly fails after increment but before acknowledging to Zeebe
+    if (Math.random() > 0.8) {
+        throw RuntimeException("Simulating error on acknowledging")
+    }
+}
+```
+
+### **The Problem**
+
+The worker increments the counter but randomly throws an exception **after** the increment but **before** acknowledging job completion to Zeebe. This simulates real-world scenarios where:
+- Network issues prevent acknowledgment
+- Worker crashes after processing but before responding
+- Timeouts occur after business logic completes
+
+When this happens:
+1. Counter is incremented (side effect completed)
+2. Exception is thrown before acknowledgment
+3. Zeebe never receives completion confirmation
+4. Zeebe retries the job
+5. Counter is incremented **again** for the same registration
+
+**Result**: The counter value becomes incorrect, incrementing multiple times for a single registration completion.
+
+### **Why This Matters**
+
+This demonstrates that **increment operations are not idempotent**. Running the same increment multiple times produces different results each time. In production systems, non-idempotent operations like:
+- Incrementing counters
+- Sending notifications
+- Processing payments
+- Creating audit logs
+
+All suffer from this problem when combined with Zeebe's at-least-once delivery semantics.
+
+### **The Solution**
+
+See the [Idempotency Pattern](../idempotency-pattern/README.md) example for how to handle this using an operation log that tracks completed operations, ensuring counter increments happen exactly once regardless of retries.
+
 ## **What Should You Use Instead?** ✅
 
 This repository provides two battle-tested solutions:

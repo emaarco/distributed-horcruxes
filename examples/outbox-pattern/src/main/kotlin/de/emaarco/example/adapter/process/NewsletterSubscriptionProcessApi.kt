@@ -16,13 +16,13 @@ object NewsletterSubscriptionProcessApi {
 
     const val ACTIVITY_CONFIRM_REGISTRATION: String = "Activity_ConfirmRegistration"
 
-    const val ACTIVITY_18_ERB_45: String = "Activity_18erb45"
+    const val SUB_PROCESS_CONFIRMATION: String = "SubProcess_Confirmation"
 
     const val END_EVENT_REGISTRATION_ABORTED: String = "EndEvent_RegistrationAborted"
 
-    const val END_EVENT_REGISTRATION_COMPLETED: String = "EndEvent_RegistrationCompleted"
-
     const val END_EVENT_SUBSCRIPTION_CONFIRMED: String = "EndEvent_SubscriptionConfirmed"
+
+    const val END_EVENT_REGISTRATION_COMPLETED: String = "EndEvent_RegistrationCompleted"
 
     const val ACTIVITY_ABORT_REGISTRATION: String = "Activity_AbortRegistration"
 
@@ -43,6 +43,8 @@ object NewsletterSubscriptionProcessApi {
   }
 
   object TaskTypes {
+    const val END_EVENT_REGISTRATION_COMPLETED: String = "newsletter.registrationCompleted"
+
     const val ACTIVITY_ABORT_REGISTRATION: String = "newsletter.abortRegistration"
 
     const val ACTIVITY_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
