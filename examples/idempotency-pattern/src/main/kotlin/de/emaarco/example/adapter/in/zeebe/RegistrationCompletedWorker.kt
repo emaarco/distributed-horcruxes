@@ -18,7 +18,7 @@ class RegistrationCompletedWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.END_EVENT_REGISTRATION_COMPLETED)
+    @JobWorker(type = TaskTypes.NEWSLETTER_REGISTRATION_COMPLETED)
     fun handleRegistrationCompleted(
         job: ActivatedJob,
         @Variable("subscriptionId") subscriptionId: String

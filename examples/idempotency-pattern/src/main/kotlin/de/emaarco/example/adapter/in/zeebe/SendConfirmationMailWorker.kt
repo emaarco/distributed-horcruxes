@@ -18,7 +18,7 @@ class SendConfirmationMailWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.ACTIVITY_SEND_CONFIRMATION_MAIL)
+    @JobWorker(type = TaskTypes.NEWSLETTER_SEND_CONFIRMATION_MAIL)
     fun sendConfirmationMail(
         job: ActivatedJob,
         @Variable("subscriptionId") subscriptionId: String

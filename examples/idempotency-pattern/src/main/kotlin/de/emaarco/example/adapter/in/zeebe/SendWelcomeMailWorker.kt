@@ -18,7 +18,7 @@ class SendWelcomeMailWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.ACTIVITY_SEND_WELCOME_MAIL)
+    @JobWorker(type = TaskTypes.NEWSLETTER_SEND_WELCOME_MAIL)
     fun sendWelcomeMail(
         job: ActivatedJob,
         @Variable("subscriptionId") subscriptionId: String
