@@ -56,3 +56,7 @@ kotlin {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.named("build") {
+    dependsOn("generateBpmnModels")
+}
