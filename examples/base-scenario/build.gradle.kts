@@ -35,7 +35,7 @@ sourceSets {
 
 tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
     baseDir = "${projectDir}/../../configuration"
-    filePattern = "*.bpmn"
+    filePattern = "newsletter.bpmn"
     outputFolderPath = "$projectDir/src/main/kotlin"
     packagePath = "de.emaarco.example.adapter.process"
     outputLanguage = OutputLanguage.KOTLIN

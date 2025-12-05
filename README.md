@@ -83,6 +83,11 @@ A scheduler or worker then reliably sends these messages to Zeebe after the tran
 Track completed operations to prevent duplicate processing when Zeebe retries job workers.
 Uses a database table to record which operations have been completed.
 
+### **4. Saga Pattern** 🔄
+
+Handle distributed transaction rollbacks using BPMN compensation events.
+When a later step fails, compensation handlers automatically undo previously completed operations.
+
 These patterns are widely used in distributed systems
 and provide different trade-offs between simplicity, reliability, and performance.
 
@@ -98,6 +103,8 @@ This repository contains examples that demonstrate both the problem and proven s
   Using a database outbox and scheduler for reliable message delivery.
 - 🔁 [**Idempotency Pattern**](./examples/idempotency-pattern/README.md):
   Preventing duplicate processing from Zeebe's at-least-once delivery semantics.
+- 🔄 [**Saga Pattern**](./examples/saga-pattern/README.md):
+  Handling distributed transaction rollbacks using BPMN compensation events.
 
 ## **Setup** ⚙️
 
