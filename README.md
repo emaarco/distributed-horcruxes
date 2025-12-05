@@ -83,7 +83,7 @@ A scheduler or worker then reliably sends these messages to Zeebe after the tran
 Track completed operations to prevent duplicate processing when Zeebe retries job workers.
 Uses a database table to record which operations have been completed.
 
-### **4. Saga Pattern** 🔄
+### **4. Saga Pattern** ⏪
 
 Handle distributed transaction rollbacks using BPMN compensation events.
 When a later step fails, compensation handlers automatically undo previously completed operations.
