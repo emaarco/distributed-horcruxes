@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0vze3ke" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.41.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:message id="Message_04tc0t0" name="Message_FormSubmitted" />
+  <bpmn:message id="Message_36dkcng" name="Message_SubscriptionConfirmed">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=subscriptionId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="payed-newsletter-subscription" isExecutable="true">
+    <bpmn:serviceTask id="serviceTask_sendWelcomeMail" name="Send&#10;Welcome-Mail">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="newsletter.sendWelcomeMail" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=subscriptionId" target="subscriptionId" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1lxg97j</bpmn:incoming>
+      <bpmn:outgoing>Flow_1w1jp6q</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:startEvent id="startEvent_submitForm" name="Submit newsletter form">
+      <bpmn:extensionElements>
+        <zeebe:ioMapping>
+          <zeebe:output source="=subscriptionId" target="subscriptionId" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:outgoing>Flow_0md8pxo</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_08dt6t9" messageRef="Message_04tc0t0" />
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0md8pxo" sourceRef="startEvent_submitForm" targetRef="serviceTask_reserveSpot" />
+    <bpmn:serviceTask id="serviceTask_processPayment" name="Process payment">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="newsletter.sendConfirmationMail" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=subscriptionId" target="subscriptionId" />
+          <zeebe:output source="=paymentSuccessful" target="paymentSuccessful" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1pm19ty</bpmn:incoming>
+      <bpmn:outgoing>Flow_1bccpvr</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="serviceTask_reserveSpot" name="Reserve spot">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="newsletter.sendReserveSpot" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=subscriptionId" target="subscriptionId" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0md8pxo</bpmn:incoming>
+      <bpmn:outgoing>Flow_1pm19ty</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1pm19ty" sourceRef="serviceTask_reserveSpot" targetRef="serviceTask_processPayment" />
+    <bpmn:exclusiveGateway id="gateway_paymentSuccessful" name="Payment successful?" default="Flow_1lxg97j">
+      <bpmn:incoming>Flow_1bccpvr</bpmn:incoming>
+      <bpmn:outgoing>Flow_1lxg97j</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1gahada</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1bccpvr" sourceRef="serviceTask_processPayment" targetRef="gateway_paymentSuccessful" />
+    <bpmn:boundaryEvent id="event_paymentFailed" name="Payment&#10;failed" attachedToRef="serviceTask_reserveSpot">
+      <bpmn:compensateEventDefinition id="CompensateEventDefinition_00dtchf" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_1lxg97j" sourceRef="gateway_paymentSuccessful" targetRef="serviceTask_sendWelcomeMail" />
+    <bpmn:sequenceFlow id="Flow_1gahada" sourceRef="gateway_paymentSuccessful" targetRef="endEvent_paymentFailed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=paymentSuccessful = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:endEvent id="endEvent_paymentFailed" name="Payment failed">
+      <bpmn:incoming>Flow_1gahada</bpmn:incoming>
+      <bpmn:compensateEventDefinition id="CompensateEventDefinition_1mlqlrt" activityRef="serviceTask_reserveSpot" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1w1jp6q" sourceRef="serviceTask_sendWelcomeMail" targetRef="endEvent_registrationCompleted" />
+    <bpmn:serviceTask id="serviceTask_cancelReservation" name="Cancel reservation" isForCompensation="true">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="newsletter.cancelSpot" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=subscriptionId" target="subscriptionId" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endEvent_registrationCompleted" name="Registration completed">
+      <bpmn:incoming>Flow_1w1jp6q</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:association id="Association_0sr1a30" associationDirection="One" sourceRef="event_paymentFailed" targetRef="serviceTask_cancelReservation" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="payed-newsletter-subscription">
+      <bpmndi:BPMNShape id="BPMNShape_0w5icnn" bpmnElement="serviceTask_sendWelcomeMail">
+        <dc:Bounds x="670" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1k8yagu" bpmnElement="startEvent_submitForm">
+        <dc:Bounds x="172" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="146" y="165" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_18ssuv7" bpmnElement="serviceTask_processPayment">
+        <dc:Bounds x="410" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_15s1sm5" bpmnElement="serviceTask_reserveSpot">
+        <dc:Bounds x="270" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_19vlbdq_di" bpmnElement="gateway_paymentSuccessful" isMarkerVisible="true">
+        <dc:Bounds x="565" y="115" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="561" y="85" width="58" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1uvu7ql_di" bpmnElement="endEvent_paymentFailed">
+        <dc:Bounds x="702" y="242" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="684" y="285" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_15ean0i_di" bpmnElement="serviceTask_cancelReservation">
+        <dc:Bounds x="410" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0axzxls_di" bpmnElement="endEvent_registrationCompleted">
+        <dc:Bounds x="822" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="811" y="165" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0goxbce_di" bpmnElement="event_paymentFailed">
+        <dc:Bounds x="302" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="328" y="205" width="44" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_1skbmc7" bpmnElement="Flow_0md8pxo">
+        <di:waypoint x="208" y="140" />
+        <di:waypoint x="270" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1pm19ty_di" bpmnElement="Flow_1pm19ty">
+        <di:waypoint x="370" y="140" />
+        <di:waypoint x="410" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1bccpvr_di" bpmnElement="Flow_1bccpvr">
+        <di:waypoint x="510" y="140" />
+        <di:waypoint x="565" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1lxg97j_di" bpmnElement="Flow_1lxg97j">
+        <di:waypoint x="615" y="140" />
+        <di:waypoint x="670" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gahada_di" bpmnElement="Flow_1gahada">
+        <di:waypoint x="590" y="165" />
+        <di:waypoint x="590" y="260" />
+        <di:waypoint x="702" y="260" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1w1jp6q_di" bpmnElement="Flow_1w1jp6q">
+        <di:waypoint x="770" y="140" />
+        <di:waypoint x="822" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0sr1a30_di" bpmnElement="Association_0sr1a30">
+        <di:waypoint x="320" y="198" />
+        <di:waypoint x="320" y="250" />
+        <di:waypoint x="410" y="250" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

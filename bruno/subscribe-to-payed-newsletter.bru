@@ -1,0 +1,22 @@
+meta {
+  name: Subscribe to payed newsletter
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8083/api/payed-newsletter/subscribe
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@mail.com",
+    "name": "John Doe"
+  }
+}
+
+vars:post-response {
+  subscriptionId: res.body.subscriptionId
+}
