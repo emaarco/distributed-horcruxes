@@ -103,7 +103,7 @@ This repository contains examples that demonstrate both the problem and proven s
   Using a database outbox and scheduler for reliable message delivery.
 - 🔁 [**Idempotency Pattern**](./examples/idempotency-pattern/README.md):
   Preventing duplicate processing from Zeebe's at-least-once delivery semantics.
-- 🔄 [**Saga Pattern**](./examples/saga-pattern/README.md):
+- ⏪ [**Saga Pattern**](./examples/saga-pattern/README.md):
   Handling distributed transaction rollbacks using BPMN compensation events.
 
 ## **Setup** ⚙️
