@@ -49,56 +49,53 @@ non-persistent state:
 
 **Spot Management (Limited Resource):**
 
-- *
-  *[InMemoryNewsletterSpotManager](src/main/kotlin/de/emaarco/example/adapter/out/memory/InMemoryNewsletterSpotManager.kt)
-  ** - In-memory manager tracking 50 subscriber spots using `mutableSetOf<Email>`
-- Spots are reserved or released (compensated) based on payment outcome
-- Demonstrates realistic limited resource constraint
+- [InMemoryNewsletterSpotManager](src/main/kotlin/de/emaarco/example/adapter/out/memory/InMemoryNewsletterSpotManager.kt):
+  In-memory manager tracking 50 subscriber spots using `mutableSetOf<Email>`.
+- Spots are reserved or released (compensated) based on payment outcome. Demonstrates realistic limited resource
+  constraint.
 
 **Key Services:**
 
-1. *
-   *[SubscribeToPayedNewsletterService](src/main/kotlin/de/emaarco/example/application/service/SubscribeToPayedNewsletterService.kt)
-   ** - Entry point that checks spot availability, persists subscription to DB, and publishes message to Zeebe
-2. **[ReserveSpotService](src/main/kotlin/de/emaarco/example/application/service/ReserveSpotService.kt)** - Reserves
-   spot in memory (compensatable operation)
-3. **[ProcessPaymentService](src/main/kotlin/de/emaarco/example/application/service/ProcessPaymentService.kt)** - Uses
+1. [SubscribeToPayedNewsletterService](src/main/kotlin/de/emaarco/example/application/service/SubscribeToPayedNewsletterService.kt):
+   Entry point that checks spot availability, persists subscription to DB, and publishes message to Zeebe
+
+2. [ReserveSpotService](src/main/kotlin/de/emaarco/example/application/service/ReserveSpotService.kt): Reserves spot
+   in memory (compensatable operation)
+3. [ProcessPaymentService](src/main/kotlin/de/emaarco/example/application/service/ProcessPaymentService.kt): Uses
    `Random.nextBoolean()` to simulate payment success/failure, persists result to DB
-4. **[CancelReservationService](src/main/kotlin/de/emaarco/example/application/service/CancelReservationService.kt)** -
-   **Compensation handler** that releases spot back to available pool
-5. **[SendWelcomeMailService](src/main/kotlin/de/emaarco/example/application/service/SendWelcomeMailService.kt)** - Logs
+4. [CancelReservationService](src/main/kotlin/de/emaarco/example/application/service/CancelReservationService.kt):
+   Compensation handler that releases spot back to available pool
+5. [SendWelcomeMailService](src/main/kotlin/de/emaarco/example/application/service/SendWelcomeMailService.kt): Logs
    welcome mail on successful payment
 
 **Zeebe Job Workers:**
 
-- **[ReserveSpotWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/ReserveSpotWorker.kt)** - Handles
+- **[ReserveSpotWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/ReserveSpotWorker.kt)**: Handles
   `newsletter.reserveSpot` job type
-- **[ProcessPaymentWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/ProcessPaymentWorker.kt)** - Handles
+- **[ProcessPaymentWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/ProcessPaymentWorker.kt)**: Handles
   `newsletter.processPayment` job type
-- **[CancelReservationWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/CancelReservationWorker.kt)** -
-  Handles `newsletter.cancelSpot` compensation job type, triggered automatically by Zeebe
-- **[SendWelcomeMailWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/SendWelcomeMailWorker.kt)** - Handles
+- **[CancelReservationWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/CancelReservationWorker.kt)**: Handles
+  `newsletter.cancelSpot` compensation job type, triggered automatically by Zeebe
+- **[SendWelcomeMailWorker](src/main/kotlin/de/emaarco/example/adapter/in/zeebe/SendWelcomeMailWorker.kt)**: Handles
   `newsletter.sendWelcomeMail` job type
 
 **REST API:**
 
-- *
-  *[SubscribeToPayedNewsletterController](src/main/kotlin/de/emaarco/example/adapter/in/rest/SubscribeToPayedNewsletterController.kt)
-  ** - Exposes `POST /api/payed-newsletter/subscribe` endpoint
+- [SubscribeToPayedNewsletterController](src/main/kotlin/de/emaarco/example/adapter/in/rest/SubscribeToPayedNewsletterController.kt):
+  Exposes `POST /api/payed-newsletter/subscribe` endpoint
 
 **Process Adapter:**
 
-- *
-  *[PayedNewsletterProcessAdapter](src/main/kotlin/de/emaarco/example/adapter/out/zeebe/PayedNewsletterProcessAdapter.kt)
-  ** - Publishes `Message_FormSubmitted` to start the process instance
+- [PayedNewsletterProcessAdapter](src/main/kotlin/de/emaarco/example/adapter/out/zeebe/PayedNewsletterProcessAdapter.kt):
+  Publishes `Message_FormSubmitted` to start the process instance
 
 **BPMN Configuration:**
 
 The [`payed-newsletter.bpmn`](../../configuration/payed-newsletter.bpmn) model defines the compensation structure:
 
-- `serviceTask_reserveSpot` - Compensatable activity with boundary compensation event
-- `serviceTask_cancelReservation` - Compensation handler marked with `isForCompensation="true"`
-- `endEvent_paymentFailed` - End event that triggers compensation via `compensateEventDefinition`
+- `serviceTask_reserveSpot`: Compensatable activity with boundary compensation event
+- `serviceTask_cancelReservation`: Compensation handler marked with `isForCompensation="true"`
+- `endEvent_paymentFailed`: End event that triggers compensation via `compensateEventDefinition`
 
 ## **Sequence Flow** 📊
 
