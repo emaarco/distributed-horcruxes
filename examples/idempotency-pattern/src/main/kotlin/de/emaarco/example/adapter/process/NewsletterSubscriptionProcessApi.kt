@@ -9,31 +9,33 @@ import kotlin.Suppress
 object NewsletterSubscriptionProcessApi {
   const val PROCESS_ID: String = "newsletter-subscription"
 
-  object Elements {
-    const val TIMER_AFTER_3_DAYS: String = "Timer_After3Days"
+  const val PROCESS_ENGINE: String = "ZEEBE"
 
-    const val TIMER_EVERY_DAY: String = "Timer_EveryDay"
+  object Elements {
+    const val ACTIVITY_ABORT_REGISTRATION: String = "Activity_AbortRegistration"
 
     const val ACTIVITY_CONFIRM_REGISTRATION: String = "Activity_ConfirmRegistration"
 
-    const val SUB_PROCESS_CONFIRMATION: String = "SubProcess_Confirmation"
-
-    const val END_EVENT_REGISTRATION_ABORTED: String = "EndEvent_RegistrationAborted"
-
-    const val END_EVENT_SUBSCRIPTION_CONFIRMED: String = "EndEvent_SubscriptionConfirmed"
-
-    const val END_EVENT_REGISTRATION_COMPLETED: String = "EndEvent_RegistrationCompleted"
-
-    const val ACTIVITY_ABORT_REGISTRATION: String = "Activity_AbortRegistration"
+    const val ACTIVITY_SEND_CONFIRMATION_MAIL: String = "Activity_SendConfirmationMail"
 
     const val ACTIVITY_SEND_WELCOME_MAIL: String = "Activity_SendWelcomeMail"
 
-    const val ACTIVITY_SEND_CONFIRMATION_MAIL: String = "Activity_SendConfirmationMail"
+    const val END_EVENT_REGISTRATION_ABORTED: String = "EndEvent_RegistrationAborted"
+
+    const val END_EVENT_REGISTRATION_COMPLETED: String = "EndEvent_RegistrationCompleted"
+
+    const val END_EVENT_SUBSCRIPTION_CONFIRMED: String = "EndEvent_SubscriptionConfirmed"
+
+    const val START_EVENT_REQUEST_RECEIVED: String = "StartEvent_RequestReceived"
 
     const val START_EVENT_SUBMIT_REGISTRATION_FORM: String =
         "StartEvent_SubmitRegistrationForm"
 
-    const val START_EVENT_REQUEST_RECEIVED: String = "StartEvent_RequestReceived"
+    const val SUB_PROCESS_CONFIRMATION: String = "SubProcess_Confirmation"
+
+    const val TIMER_AFTER_3_DAYS: String = "Timer_After3Days"
+
+    const val TIMER_EVERY_DAY: String = "Timer_EveryDay"
   }
 
   object Messages {
@@ -43,13 +45,13 @@ object NewsletterSubscriptionProcessApi {
   }
 
   object TaskTypes {
-    const val NEWSLETTER_REGISTRATION_COMPLETED: String = "newsletter.registrationCompleted"
-
     const val NEWSLETTER_ABORT_REGISTRATION: String = "newsletter.abortRegistration"
 
-    const val NEWSLETTER_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
+    const val NEWSLETTER_REGISTRATION_COMPLETED: String = "newsletter.registrationCompleted"
 
     const val NEWSLETTER_SEND_CONFIRMATION_MAIL: String = "newsletter.sendConfirmationMail"
+
+    const val NEWSLETTER_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
   }
 
   object Timers {

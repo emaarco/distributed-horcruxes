@@ -9,22 +9,24 @@ import kotlin.Suppress
 object PayedNewsletterSubscriptionProcessApi {
   const val PROCESS_ID: String = "payed-newsletter-subscription"
 
+  const val PROCESS_ENGINE: String = "ZEEBE"
+
   object Elements {
-    const val EVENT_PAYMENT_FAILED: String = "event_paymentFailed"
-
-    const val GATEWAY_PAYMENT_SUCCESSFUL: String = "gateway_paymentSuccessful"
-
     const val END_EVENT_PAYMENT_FAILED: String = "endEvent_paymentFailed"
 
     const val END_EVENT_REGISTRATION_COMPLETED: String = "endEvent_registrationCompleted"
 
-    const val SERVICE_TASK_SEND_WELCOME_MAIL: String = "serviceTask_sendWelcomeMail"
+    const val EVENT_PAYMENT_FAILED: String = "event_paymentFailed"
+
+    const val GATEWAY_PAYMENT_SUCCESSFUL: String = "gateway_paymentSuccessful"
+
+    const val SERVICE_TASK_CANCEL_RESERVATION: String = "serviceTask_cancelReservation"
 
     const val SERVICE_TASK_PROCESS_PAYMENT: String = "serviceTask_processPayment"
 
     const val SERVICE_TASK_RESERVE_SPOT: String = "serviceTask_reserveSpot"
 
-    const val SERVICE_TASK_CANCEL_RESERVATION: String = "serviceTask_cancelReservation"
+    const val SERVICE_TASK_SEND_WELCOME_MAIL: String = "serviceTask_sendWelcomeMail"
 
     const val START_EVENT_SUBMIT_FORM: String = "startEvent_submitForm"
   }
@@ -36,18 +38,18 @@ object PayedNewsletterSubscriptionProcessApi {
   }
 
   object TaskTypes {
-    const val NEWSLETTER_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
+    const val NEWSLETTER_CANCEL_SPOT: String = "newsletter.cancelSpot"
 
     const val NEWSLETTER_SEND_CONFIRMATION_MAIL: String = "newsletter.sendConfirmationMail"
 
     const val NEWSLETTER_SEND_RESERVE_SPOT: String = "newsletter.sendReserveSpot"
 
-    const val NEWSLETTER_CANCEL_SPOT: String = "newsletter.cancelSpot"
+    const val NEWSLETTER_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
   }
 
   object Variables {
-    const val SUBSCRIPTION_ID: String = "subscriptionId"
-
     const val PAYMENT_SUCCESSFUL: String = "paymentSuccessful"
+
+    const val SUBSCRIPTION_ID: String = "subscriptionId"
   }
 }
