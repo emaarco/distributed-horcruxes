@@ -1,13 +1,13 @@
 [versions]
-spring_version = "3.5.8"
+spring_version = "3.5.9"
 spring_dependency_version = "1.1.7"
-mockk_version = "1.14.6"
+mockk_version = "1.14.7"
 spring_mockk_version = "5.0.1"
-kotlin_version = "2.2.21"
+kotlin_version = "2.3.0"
 kotlin_logging_version = "3.0.5"
 mockito_version = "5.2.0"
 kotlin_mockito_version = "6.1.0"
-zeebe_version = "8.8.5"
+zeebe_version = "8.8.8"
 postgres_version = "42.7.8"
 
 [libraries]
@@ -47,4 +47,4 @@ kotlinJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin_vers
 kotlinKapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin_version" }
 springframework = { id = "org.springframework.boot", version.ref = "spring_version" }
 springDependency = { id = "io.spring.dependency-management", version.ref = "spring_dependency_version" }
-bpmnToCode = { id = "io.github.emaarco.bpmn-to-code-gradle", version = "0.0.15" }
+bpmnToCode = { id = "io.github.emaarco.bpmn-to-code-gradle", version = "0.0.17" }
