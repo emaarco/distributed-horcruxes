@@ -1,7 +1,7 @@
-package de.emaarco.example.adapter.`in`.zeebe
+package io.miragon.example.adapter.`in`.zeebe
 
-import de.emaarco.example.application.port.`in`.SendWelcomeMailUseCase
-import de.emaarco.example.domain.SubscriptionId
+import io.miragon.example.application.port.`in`.SendWelcomeMailUseCase
+import io.miragon.example.domain.SubscriptionId
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just

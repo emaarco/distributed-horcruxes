@@ -1,4 +1,4 @@
-package de.emaarco.example
+package io.miragon.example
 
 import io.camunda.client.annotation.Deployment
 import org.springframework.boot.autoconfigure.SpringBootApplication

@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.bpmnToCode)
 }
 
-group = "de.emaarco.example"
+group = "io.miragon.example"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -37,7 +37,7 @@ tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
     baseDir = "${projectDir}/../../configuration"
     filePattern = "payed-newsletter.bpmn"
     outputFolderPath = "$projectDir/src/main/kotlin"
-    packagePath = "de.emaarco.example.adapter.process"
+    packagePath = "io.miragon.example.adapter.process"
     outputLanguage = OutputLanguage.KOTLIN
     processEngine = ProcessEngine.ZEEBE
     useVersioning = false
