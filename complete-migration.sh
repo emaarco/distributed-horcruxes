@@ -18,7 +18,7 @@ echo "=========================================="
 # Step 1: Update all Kotlin files
 echo ""
 echo "Step 1: Updating package declarations and imports in Kotlin files..."
-find examples -name "*.kt" -type f -print0 | xargs -0 sed -i 's/de\.emaarco\.example/io.miragon.example/g'
+find examples -name "*.kt" -type f -print0 | xargs -0 sed -i '' 's/de\.emaarco\.example/io.miragon.example/g'
 echo "✓ Updated all Kotlin files"
 
 # Step 2: Move directory structures for each example
