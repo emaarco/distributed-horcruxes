@@ -28,7 +28,7 @@ The idempotency pattern consists of three main components:
 The `OperationId` wraps a composite key for type-safe operation tracking:
 
 ```kotlin
-package de.emaarco.example.domain
+package io.miragon.example.domain
 
 data class OperationId(val value: String)
 ```

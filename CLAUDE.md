@@ -45,7 +45,7 @@ Each example is a Spring Boot application on port 8081 (except base-scenario on 
 
 Run the main class:
 
-- `examples/<pattern-name>/src/main/kotlin/de/emaarco/example/ExampleApplication.kt`
+- `examples/<pattern-name>/src/main/kotlin/io/miragon/example/ExampleApplication.kt`
 
 Available patterns: `base-scenario`, `after-transaction`, `outbox-pattern`, `idempotency-pattern`
 
@@ -69,7 +69,7 @@ Use Bruno API client with files in `bruno/` directory:
 gradle generateBpmnModels
 
 # BPMN source: configuration/newsletter.bpmn
-# Generated output: examples/*/src/main/kotlin/de/emaarco/example/adapter/process/
+# Generated output: examples/*/src/main/kotlin/io/miragon/example/adapter/process/
 ```
 
 ### Creating GitHub Issues
