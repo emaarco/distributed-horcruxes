@@ -20,4 +20,22 @@ updates:
     directories:
       - "/stack"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+
+  # Config for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    assignees:
+      - "emaarco"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
