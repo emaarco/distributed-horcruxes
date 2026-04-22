@@ -52,7 +52,7 @@ Available patterns: `base-scenario`, `after-transaction`, `outbox-pattern`, `ide
 All connect to:
 
 - Zeebe gRPC: localhost:26500
-- Zeebe REST: localhost:9600
+- Zeebe REST: localhost:8080
 - PostgreSQL: localhost:5432 (database: example_database, user: admin/admin)
 
 ### Interacting with Examples
