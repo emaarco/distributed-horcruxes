@@ -2,6 +2,7 @@ package io.miragon.example.adapter.out.zeebe
 
 import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_FORM_SUBMITTED
 import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_SUBSCRIPTION_CONFIRMED
+import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Variables
 import io.miragon.example.application.port.out.NewsletterSubscriptionProcess
 import io.miragon.example.domain.SubscriptionId
 import io.camunda.client.CamundaClient
@@ -23,10 +24,10 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun submitForm(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
-        val variables = mapOf("subscriptionId" to id.value.toString())
+        val variables = mapOf(Variables.StartEventSubmitRegistrationForm.SUBSCRIPTION_ID.value to id.value.toString())
         val allVariables = variables + mapOf("correlationId" to id.value.toString())
         camundaClient.newPublishMessageCommand()
-            .messageName(MESSAGE_FORM_SUBMITTED)
+            .messageName(MESSAGE_FORM_SUBMITTED.value)
             .withoutCorrelationKey()
             .variables(allVariables)
             .send()
@@ -36,7 +37,7 @@ class NewsletterSubscriptionProcessAdapter(
     override fun confirmSubscription(id: SubscriptionId) {
         // PROBLEM: This call happens immediately, potentially before the DB commit!
         camundaClient.newPublishMessageCommand()
-            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED)
+            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED.value)
             .correlationKey(id.value.toString())
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()

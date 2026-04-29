@@ -2,6 +2,7 @@ package io.miragon.example.adapter.out.zeebe
 
 import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_FORM_SUBMITTED
 import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_SUBSCRIPTION_CONFIRMED
+import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Variables
 import io.miragon.example.application.port.out.NewsletterSubscriptionProcess
 import io.miragon.example.domain.SubscriptionId
 import io.camunda.client.CamundaClient
@@ -15,11 +16,11 @@ class NewsletterSubscriptionProcessAdapter(
 
     override fun submitForm(id: SubscriptionId) {
         val correlationKey = id.value.toString()
-        val variables = mapOf("subscriptionId" to correlationKey)
+        val variables = mapOf(Variables.StartEventSubmitRegistrationForm.SUBSCRIPTION_ID.value to correlationKey)
         val messageId = "$correlationKey-$MESSAGE_FORM_SUBMITTED"
 
         camundaClient.newPublishMessageCommand()
-            .messageName(MESSAGE_FORM_SUBMITTED)
+            .messageName(MESSAGE_FORM_SUBMITTED.value)
             .correlationKey(correlationKey)
             .messageId(messageId)
             .variables(variables)
@@ -33,7 +34,7 @@ class NewsletterSubscriptionProcessAdapter(
         val messageId = "$correlationKey-$MESSAGE_SUBSCRIPTION_CONFIRMED"
 
         camundaClient.newPublishMessageCommand()
-            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED)
+            .messageName(MESSAGE_SUBSCRIPTION_CONFIRMED.value)
             .correlationKey(correlationKey)
             .messageId(messageId)
             .timeToLive(Duration.ofSeconds(10))

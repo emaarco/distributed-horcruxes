@@ -1,7 +1,6 @@
 package io.miragon.example.adapter.`in`.zeebe
 
-import io.miragon.example.adapter.process.PayedNewsletterSubscriptionProcessApi.TaskTypes
-import io.miragon.example.adapter.process.PayedNewsletterSubscriptionProcessApi.Variables
+import io.miragon.example.adapter.process.PayedNewsletterSubscriptionProcessApi.ServiceTasks
 import io.miragon.example.application.port.`in`.ReserveSpotUseCase
 import io.miragon.example.domain.SubscriptionId
 import io.camunda.client.annotation.JobWorker
@@ -16,9 +15,9 @@ class ReserveSpotWorker(
 ) {
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.NEWSLETTER_SEND_RESERVE_SPOT)
+    @JobWorker(type = ServiceTasks.NEWSLETTER_SEND_RESERVE_SPOT)
     fun reserveSpot(
-        @Variable(Variables.SUBSCRIPTION_ID) subscriptionId: String
+        @Variable("subscriptionId") subscriptionId: String
     ) {
         log.debug { "Received Zeebe job to reserve spot: $subscriptionId" }
         useCase.reserveSpot(SubscriptionId(UUID.fromString(subscriptionId)))
