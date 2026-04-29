@@ -17,10 +17,10 @@ class PayedNewsletterProcessAdapter(
 
     override fun submitForm(id: SubscriptionId) {
         val messageName = Messages.MESSAGE_FORM_SUBMITTED
-        val variables = mapOf(Variables.SUBSCRIPTION_ID to id.value.toString())
+        val variables = mapOf(Variables.StartEventSubmitForm.SUBSCRIPTION_ID.value to id.value.toString())
         log.info { "Publishing message $messageName with variables $variables" }
         camundaClient.newPublishMessageCommand()
-            .messageName(messageName)
+            .messageName(messageName.value)
             .withoutCorrelationKey()
             .variables(variables)
             .send()

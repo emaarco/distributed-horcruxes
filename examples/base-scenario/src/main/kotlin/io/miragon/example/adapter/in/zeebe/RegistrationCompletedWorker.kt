@@ -1,6 +1,6 @@
 package io.miragon.example.adapter.`in`.zeebe
 
-import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.TaskTypes
+import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.ServiceTasks
 import io.miragon.example.application.port.`in`.IncrementSubscriptionCounterUseCase
 import io.miragon.example.domain.SubscriptionId
 import io.camunda.client.annotation.JobWorker
@@ -29,7 +29,7 @@ class RegistrationCompletedWorker(
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.NEWSLETTER_REGISTRATION_COMPLETED)
+    @JobWorker(type = ServiceTasks.NEWSLETTER_REGISTRATION_COMPLETED)
     fun handleRegistrationCompleted(@Variable("subscriptionId") subscriptionId: String) {
         log.debug { "Received Zeebe job for registration completed: $subscriptionId" }
         useCase.incrementCounter(SubscriptionId(UUID.fromString(subscriptionId)))

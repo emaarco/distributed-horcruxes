@@ -40,7 +40,6 @@ tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
     packagePath = "io.miragon.example.adapter.process"
     outputLanguage = OutputLanguage.KOTLIN
     processEngine = ProcessEngine.ZEEBE
-    useVersioning = false
 }
 
 java {

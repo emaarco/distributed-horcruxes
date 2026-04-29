@@ -3,41 +3,60 @@
 
 package io.miragon.example.adapter.process
 
+import io.github.emaarco.bpmn.runtime.BpmnEngine
+import io.github.emaarco.bpmn.runtime.BpmnFlow
+import io.github.emaarco.bpmn.runtime.BpmnRelations
+import io.github.emaarco.bpmn.runtime.ElementId
+import io.github.emaarco.bpmn.runtime.MessageName
+import io.github.emaarco.bpmn.runtime.ProcessId
+import io.github.emaarco.bpmn.runtime.VariableName
 import kotlin.String
 import kotlin.Suppress
 
 object PayedNewsletterSubscriptionProcessApi {
-  const val PROCESS_ID: String = "payed-newsletter-subscription"
+  val PROCESS_ID: ProcessId = ProcessId("payed-newsletter-subscription")
 
-  const val PROCESS_ENGINE: String = "ZEEBE"
+  val PROCESS_ENGINE: BpmnEngine = BpmnEngine.ZEEBE
 
+  /**
+   * BPMN element ids as declared in the source model.
+   * Typically used in process-level tests or when searching for tasks.
+   * Worker runtime code rarely needs these.
+   */
   object Elements {
-    const val END_EVENT_PAYMENT_FAILED: String = "endEvent_paymentFailed"
+    val END_EVENT_PAYMENT_FAILED: ElementId = ElementId("endEvent_paymentFailed")
 
-    const val END_EVENT_REGISTRATION_COMPLETED: String = "endEvent_registrationCompleted"
+    val END_EVENT_REGISTRATION_COMPLETED: ElementId =
+        ElementId("endEvent_registrationCompleted")
 
-    const val EVENT_PAYMENT_FAILED: String = "event_paymentFailed"
+    val EVENT_PAYMENT_FAILED: ElementId = ElementId("event_paymentFailed")
 
-    const val GATEWAY_PAYMENT_SUCCESSFUL: String = "gateway_paymentSuccessful"
+    val GATEWAY_PAYMENT_SUCCESSFUL: ElementId = ElementId("gateway_paymentSuccessful")
 
-    const val SERVICE_TASK_CANCEL_RESERVATION: String = "serviceTask_cancelReservation"
+    val SERVICE_TASK_CANCEL_RESERVATION: ElementId =
+        ElementId("serviceTask_cancelReservation")
 
-    const val SERVICE_TASK_PROCESS_PAYMENT: String = "serviceTask_processPayment"
+    val SERVICE_TASK_PROCESS_PAYMENT: ElementId = ElementId("serviceTask_processPayment")
 
-    const val SERVICE_TASK_RESERVE_SPOT: String = "serviceTask_reserveSpot"
+    val SERVICE_TASK_RESERVE_SPOT: ElementId = ElementId("serviceTask_reserveSpot")
 
-    const val SERVICE_TASK_SEND_WELCOME_MAIL: String = "serviceTask_sendWelcomeMail"
+    val SERVICE_TASK_SEND_WELCOME_MAIL: ElementId = ElementId("serviceTask_sendWelcomeMail")
 
-    const val START_EVENT_SUBMIT_FORM: String = "startEvent_submitForm"
+    val START_EVENT_SUBMIT_FORM: ElementId = ElementId("startEvent_submitForm")
   }
 
+  /**
+   * BPMN message names used to correlate messages to running process instances.
+   */
   object Messages {
-    const val MESSAGE_FORM_SUBMITTED: String = "Message_FormSubmitted"
-
-    const val MESSAGE_SUBSCRIPTION_CONFIRMED: String = "Message_SubscriptionConfirmed"
+    val MESSAGE_FORM_SUBMITTED: MessageName = MessageName("Message_FormSubmitted")
   }
 
-  object TaskTypes {
+  /**
+   * Job worker task types used in `@JobWorker(type = ServiceTasks.X)` annotations.
+   * Kept as `const val String` because annotation arguments must be compile-time constants.
+   */
+  object ServiceTasks {
     const val NEWSLETTER_CANCEL_SPOT: String = "newsletter.cancelSpot"
 
     const val NEWSLETTER_SEND_CONFIRMATION_MAIL: String = "newsletter.sendConfirmationMail"
@@ -47,9 +66,170 @@ object PayedNewsletterSubscriptionProcessApi {
     const val NEWSLETTER_SEND_WELCOME_MAIL: String = "newsletter.sendWelcomeMail"
   }
 
-  object Variables {
-    const val PAYMENT_SUCCESSFUL: String = "paymentSuccessful"
+  object Compensations {
+    val END_EVENT_PAYMENT_FAILED: ElementId = ElementId("endEvent_paymentFailed")
 
-    const val SUBSCRIPTION_ID: String = "subscriptionId"
+    val EVENT_PAYMENT_FAILED: ElementId = ElementId("event_paymentFailed")
+  }
+
+  /**
+   * Process variables grouped by the BPMN element that declares them.
+   * Direction is encoded in each variable's wrapper type: `VariableName.Input`, `VariableName.Output`, or `VariableName.InOut` when the variable is both read and written by the same element.
+   * Consumer APIs that take a specific subtype (e.g. `fun setOutput(v: VariableName.Output)`) get compile-time direction enforcement.
+   */
+  object Variables {
+    object ServiceTaskCancelReservation {
+      val SUBSCRIPTION_ID: VariableName.Input = VariableName.Input("subscriptionId")
+    }
+
+    object ServiceTaskProcessPayment {
+      val PAYMENT_SUCCESSFUL: VariableName.Output = VariableName.Output("paymentSuccessful")
+
+      val SUBSCRIPTION_ID: VariableName.Input = VariableName.Input("subscriptionId")
+    }
+
+    object ServiceTaskReserveSpot {
+      val SUBSCRIPTION_ID: VariableName.Input = VariableName.Input("subscriptionId")
+    }
+
+    object ServiceTaskSendWelcomeMail {
+      val SUBSCRIPTION_ID: VariableName.Input = VariableName.Input("subscriptionId")
+    }
+
+    object StartEventSubmitForm {
+      val SUBSCRIPTION_ID: VariableName.Output = VariableName.Output("subscriptionId")
+    }
+  }
+
+  /**
+   * Sequence flows between BPMN elements.
+   * Mainly useful for process-model tooling, tests, and AI-agent consumers reasoning about the process shape.
+   * Worker code typically does not need these.
+   */
+  object Flows {
+    val FLOW_0_MD_8_PXO: BpmnFlow = BpmnFlow(
+          id = "Flow_0md8pxo",
+          sourceRef = "startEvent_submitForm",
+          targetRef = "serviceTask_reserveSpot",
+        )
+
+    val FLOW_1_BCCPVR: BpmnFlow = BpmnFlow(
+          id = "Flow_1bccpvr",
+          sourceRef = "serviceTask_processPayment",
+          targetRef = "gateway_paymentSuccessful",
+        )
+
+    val FLOW_1_GAHADA: BpmnFlow = BpmnFlow(
+          id = "Flow_1gahada",
+          sourceRef = "gateway_paymentSuccessful",
+          targetRef = "endEvent_paymentFailed",
+          condition = $$"""=paymentSuccessful = false""",
+        )
+
+    val FLOW_1_LXG_97_J: BpmnFlow = BpmnFlow(
+          id = "Flow_1lxg97j",
+          sourceRef = "gateway_paymentSuccessful",
+          targetRef = "serviceTask_sendWelcomeMail",
+          isDefault = true,
+        )
+
+    val FLOW_1_PM_19_TY: BpmnFlow = BpmnFlow(
+          id = "Flow_1pm19ty",
+          sourceRef = "serviceTask_reserveSpot",
+          targetRef = "serviceTask_processPayment",
+        )
+
+    val FLOW_1_W_1_JP_6_Q: BpmnFlow = BpmnFlow(
+          id = "Flow_1w1jp6q",
+          sourceRef = "serviceTask_sendWelcomeMail",
+          targetRef = "endEvent_registrationCompleted",
+        )
+  }
+
+  /**
+   * Per-element graph metadata (previousElements / followingElements / parentId / boundary attachments).
+   * Intended for tooling and tests, not worker runtime code.
+   */
+  object Relations {
+    val END_EVENT_PAYMENT_FAILED: BpmnRelations = BpmnRelations(
+          name = "Payment failed",
+          previousElements = listOf("gateway_paymentSuccessful"),
+          followingElements = emptyList(),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val END_EVENT_REGISTRATION_COMPLETED: BpmnRelations = BpmnRelations(
+          name = "Registration completed",
+          previousElements = listOf("serviceTask_sendWelcomeMail"),
+          followingElements = emptyList(),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val EVENT_PAYMENT_FAILED: BpmnRelations = BpmnRelations(
+          name = "Payment failed",
+          previousElements = emptyList(),
+          followingElements = emptyList(),
+          parentId = null,
+          attachedToRef = "serviceTask_reserveSpot",
+          attachedElements = emptyList(),
+        )
+
+    val GATEWAY_PAYMENT_SUCCESSFUL: BpmnRelations = BpmnRelations(
+          name = "Payment successful?",
+          previousElements = listOf("serviceTask_processPayment"),
+          followingElements = listOf("serviceTask_sendWelcomeMail", "endEvent_paymentFailed"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val SERVICE_TASK_CANCEL_RESERVATION: BpmnRelations = BpmnRelations(
+          name = "Cancel reservation",
+          previousElements = emptyList(),
+          followingElements = emptyList(),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val SERVICE_TASK_PROCESS_PAYMENT: BpmnRelations = BpmnRelations(
+          name = "Process payment",
+          previousElements = listOf("serviceTask_reserveSpot"),
+          followingElements = listOf("gateway_paymentSuccessful"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val SERVICE_TASK_RESERVE_SPOT: BpmnRelations = BpmnRelations(
+          name = "Reserve spot",
+          previousElements = listOf("startEvent_submitForm"),
+          followingElements = listOf("serviceTask_processPayment"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = listOf("event_paymentFailed"),
+        )
+
+    val SERVICE_TASK_SEND_WELCOME_MAIL: BpmnRelations = BpmnRelations(
+          name = "Send Welcome-Mail",
+          previousElements = listOf("gateway_paymentSuccessful"),
+          followingElements = listOf("endEvent_registrationCompleted"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
+
+    val START_EVENT_SUBMIT_FORM: BpmnRelations = BpmnRelations(
+          name = "Submit newsletter form",
+          previousElements = emptyList(),
+          followingElements = listOf("serviceTask_reserveSpot"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+        )
   }
 }

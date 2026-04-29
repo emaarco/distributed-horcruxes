@@ -1,6 +1,6 @@
 package io.miragon.example.adapter.`in`.zeebe
 
-import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.TaskTypes
+import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.ServiceTasks
 import io.miragon.example.application.port.`in`.SendWelcomeMailUseCase
 import io.miragon.example.domain.SubscriptionId
 import io.camunda.client.annotation.JobWorker
@@ -14,7 +14,7 @@ class SendWelcomeMailWorker(private val useCase: SendWelcomeMailUseCase) {
 
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = TaskTypes.NEWSLETTER_SEND_WELCOME_MAIL)
+    @JobWorker(type = ServiceTasks.NEWSLETTER_SEND_WELCOME_MAIL)
     fun sendConfirmationMail(@Variable("subscriptionId") subscriptionId: String) {
         log.debug { "Received Zeebe job to send welcome mail: $subscriptionId" }
         useCase.sendWelcomeMail(SubscriptionId(UUID.fromString(subscriptionId)))
