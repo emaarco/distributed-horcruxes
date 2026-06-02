@@ -92,10 +92,10 @@ configs:
                 email: "demo@demo.com"
             defaultRoles.admin.users:
               - "demo"
-        database.index.numberOfReplicas: 0 # Single node elasticsearch so we disable replication
         data:
           secondary-storage:
             type: elasticsearch
             elasticsearch:
               cluster-name: elasticsearch
               url: "http://elasticsearch:9200"
+              number-of-replicas: 0 # Single node elasticsearch so we disable replication

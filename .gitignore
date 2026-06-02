@@ -37,3 +37,4 @@ replay_pid*
 # IntellIJ
 .idea/
 .DS_Store
+.claude/logs/
