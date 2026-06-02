@@ -21,6 +21,18 @@ updates:
       - "/stack"
     schedule:
       interval: "monthly"
+    labels:
+      - "dependencies"
+    assignees:
+      - "emaarco"
+    groups:
+      docker-compose:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
 
   # Config for GitHub Actions
   - package-ecosystem: "github-actions"

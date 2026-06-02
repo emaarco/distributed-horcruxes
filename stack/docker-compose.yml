@@ -2,7 +2,7 @@
 services:
 
   postgres:
-    image: postgres:${POSTGRES_VERSION}
+    image: postgres:17.5
     container_name: dh-postgres
     ports:
       - 5432:5432
@@ -14,7 +14,7 @@ services:
 
   # Consolidated Zeebe + Operate + Tasklist - https://docs.camunda.io/docs/self-managed/setup/deploy/other/docker/#zeebe
   orchestration:
-    image: camunda/camunda:${CAMUNDA_VERSION}
+    image: camunda/camunda:8.9.5
     container_name: orchestration
     ports:
       - "26500:26500"
@@ -38,7 +38,7 @@ services:
         condition: service_healthy
 
   elasticsearch: # https://hub.docker.com/_/elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.14
     container_name: elasticsearch
     ports:
       - "9200:9200"
