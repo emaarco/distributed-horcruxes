@@ -139,6 +139,7 @@ domain/            - Domain entities and value objects
 | **After-Transaction**   | Premature execution      | Callbacks after DB commit       | ✅ Fast, ❌ No retry            |
 | **Outbox Pattern**      | Transaction coordination | DB table + background scheduler | ✅ Reliable + retry, ❌ Latency |
 | **Idempotency Pattern** | Duplicate executions     | Track completed operations      | ✅ Prevents duplicates         |
+| **Combined Pattern**    | All of the above         | Outbox + Idempotency together   | ✅ End-to-end safe, ❌ More parts |
 
 #### Base Scenario (`examples/base-scenario`)
 
@@ -156,6 +157,12 @@ Saves messages to DB table in same transaction. Background scheduler sends them 
 
 Services check `processed_operations` table before executing. Uses composite key: `subscriptionId-elementId`.
 **Pattern**: Check if processed → Execute → Record completion (all in one transaction).
+
+#### Combined Pattern (`examples/combined-pattern`)
+
+Merges both: outbound messages go through the outbox (`process_message` table + scheduler with `messageId` dedup),
+inbound jobs are made idempotent via `processed_operations`. Outbox secures service → Zeebe, idempotency secures
+Zeebe → service — addresses all six challenges.
 
 ### Shared Domain Model
 
@@ -204,6 +211,7 @@ Six main problems (see `challenges.md` for details):
 - After-Transaction: #1, #2
 - Outbox Pattern: #1, #2, #3 (with retries)
 - Idempotency Pattern: #4
+- Combined Pattern: #1–#6 (Outbox for #1–#3/#5/#6 + Idempotency for #4)
 
 ### Productivity Tips:
 
