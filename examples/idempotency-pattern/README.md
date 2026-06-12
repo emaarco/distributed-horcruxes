@@ -10,12 +10,13 @@ The idempotency pattern consists of three main components:
 
 1. **OperationId Value Object**: A composite key combining `subscriptionId-elementId` for business-driven idempotency tracking
 2. **ProcessedOperations Table**: Database table that records completed operations with their operationId and timestamp
-3. **Service Layer Check**: Services verify if an operation has been processed before executing business logic
+3. **IdempotentOperationExecutor**: A central component that performs the Check → Execute → Record cycle; services wrap their business logic in it
 
 **Key Features:**
 
 - **Composite OperationId**: Uses `subscriptionId-elementId` instead of internal job keys for meaningful tracking
-- **Service-Layer Implementation**: Idempotency logic lives in services, not workers (clean separation of concerns)
+- **Centralized Check**: The Check → Execute → Record logic lives in one reusable executor, not in every service
+- **Service-Layer Implementation**: Idempotency logic lives in the application layer, not in workers (clean separation of concerns)
 - **Atomic Pattern**: Check → Execute → Record happens in single `@Transactional` boundary
 - **Minimal Infrastructure**: Just a simple database table, no schedulers or background processes needed
 
@@ -50,40 +51,60 @@ data class ProcessedOperationEntity(
 )
 ```
 
-### **Service Layer Implementation**
+### **The IdempotentOperationExecutor**
 
-Services implement the Check → Execute → Record pattern:
+The Check → Execute → Record pattern is implemented once, in a reusable executor:
 
 ```kotlin
-@Service
-@Transactional
-class SendConfirmationMailService(
-    private val repository: NewsletterSubscriptionRepository,
+@Component
+class IdempotentOperationExecutor(
     private val processedOperationRepository: ProcessedOperationRepository
-) : SendConfirmationMailUseCase {
+) {
 
     private val log = KotlinLogging.logger {}
 
-    override fun sendConfirmationMail(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId.value)) {
+    fun runOnce(operationId: OperationId, block: () -> Unit) {
+        if (processedOperationRepository.existsById(operationId)) {
             log.info { "Skipping already processed operation: ${operationId.value}" }
             return
         }
 
-        val subscription = repository.find(subscriptionId)
-        log.info { "Sending confirmation mail to ${subscription.email}" }
-
-        processedOperationRepository.save(operationId.value)
+        block()
+        processedOperationRepository.save(operationId)
     }
 }
 ```
 
 **Pattern Breakdown:**
 1. **Check**: Query `processed_operations` table for the operationId
-2. **Execute**: If not found, run the business logic (send email)
+2. **Execute**: If not found, run the business logic (the `block`)
 3. **Record**: Save the operationId to mark completion
 
-All three steps happen atomically within the `@Transactional` boundary, preventing race conditions.
+The executor must be called **inside** the caller's transaction: because it runs within the
+service's `@Transactional` boundary, all three steps stay atomic, preventing race conditions.
+
+### **Service Layer Implementation**
+
+Services wrap their business logic in `runOnce` and stay focused on business behavior:
+
+```kotlin
+@Service
+@Transactional
+class SendConfirmationMailService(
+    private val repository: NewsletterSubscriptionRepository,
+    private val idempotencyGuard: IdempotentOperationExecutor
+) : SendConfirmationMailUseCase {
+
+    private val log = KotlinLogging.logger {}
+
+    override fun sendConfirmationMail(subscriptionId: SubscriptionId, operationId: OperationId) {
+        idempotencyGuard.runOnce(operationId) {
+            val subscription = repository.find(subscriptionId)
+            log.info { "Sending confirmation mail to ${subscription.email}" }
+        }
+    }
+}
+```
 
 ### **Worker Layer**
 
@@ -126,20 +147,15 @@ This example also includes a subscription counter that demonstrates how the idem
 @Transactional
 class IncrementSubscriptionCounterService(
     private val counterRepository: SubscriptionCounterRepository,
-    private val processedOperationRepository: ProcessedOperationRepository
+    private val idempotencyGuard: IdempotentOperationExecutor
 ) : IncrementSubscriptionCounterUseCase {
 
     override fun incrementCounter(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId)) {
-            log.info { "Skipping already processed operation: ${operationId.value}" }
-            return  // Early exit - operation already completed
+        idempotencyGuard.runOnce(operationId) {
+            val counter = counterRepository.find()
+            val updatedCounter = counter.increment()
+            counterRepository.save(updatedCounter)
         }
-
-        val counter = counterRepository.find()
-        val updatedCounter = counter.increment()
-        counterRepository.save(updatedCounter)
-
-        processedOperationRepository.save(operationId)  // Mark as completed
     }
 }
 ```
@@ -148,7 +164,7 @@ class IncrementSubscriptionCounterService(
 
 1. Worker listens to `newsletter.registrationCompleted` message end event
 2. Constructs `OperationId` from `subscriptionId-elementId`
-3. Service checks if this exact operation was already processed
+3. The executor checks if this exact operation was already processed
 4. If already processed: Skip increment (idempotent behavior)
 5. If not processed: Increment counter AND record operation (atomic)
 
@@ -197,7 +213,7 @@ sequenceDiagram
 
 - **Prevents Duplicate Processing**: Handles Zeebe's at-least-once delivery safely
 - **Business-Driven Keys**: OperationId based on domain entities + BPMN elements, not internal job IDs
-- **Clean Architecture**: Idempotency logic in services, workers stay thin
+- **Clean Architecture**: Idempotency logic in one central executor, services and workers stay thin
 - **Atomic Pattern**: Check-execute-record happens in single transaction (no race conditions)
 - **Simple Infrastructure**: Just a database table, no schedulers or message queues
 - **Audit Trail**: `processed_at` timestamp provides history of when operations completed

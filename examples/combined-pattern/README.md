@@ -38,8 +38,9 @@ together:
    `ProcessEngineOutboxScheduler` polls every 200ms, sends messages to Zeebe with a unique `messageId`, and marks
    them `SENT` (or increments `retryCount` on failure).
 2. **Inbound (Idempotency)** — every job worker builds a composite `OperationId` (`subscriptionId-elementId`) and
-   the services apply the **Check → Execute → Record** pattern against the `processed_operations` table, all inside
-   one `@Transactional` boundary.
+   the services wrap their business logic in a central `IdempotentOperationExecutor` that applies the
+   **Check → Execute → Record** pattern against the `processed_operations` table, all inside one
+   `@Transactional` boundary.
 
 Because both the business data **and** the outbox message are persisted in the same transaction, they commit
 atomically — the engine is never notified about data that was rolled back.
@@ -86,7 +87,8 @@ private fun sendMessage(message: ProcessMessageEntity) {
 
 ### **Inbound: Idempotent Workers**
 
-Workers construct the composite `OperationId`; the service checks it before doing any work:
+Workers construct the composite `OperationId`; the service wraps its business logic in the central
+`IdempotentOperationExecutor`, which performs the **Check → Execute → Record** cycle in one place:
 
 ```kotlin
 @JobWorker(type = ServiceTasks.NEWSLETTER_SEND_WELCOME_MAIL)
@@ -99,21 +101,37 @@ fun sendWelcomeMail(job: ActivatedJob, @Variable("subscriptionId") subscriptionI
 ```
 
 ```kotlin
+@Component
+class IdempotentOperationExecutor(
+    private val processedOperationRepository: ProcessedOperationRepository
+) {
+    fun runOnce(operationId: OperationId, block: () -> Unit) {
+        if (processedOperationRepository.existsById(operationId)) return // already done -> skip
+        block()                                                          // execute
+        processedOperationRepository.save(operationId)                   // record
+    }
+}
+```
+
+```kotlin
 @Service
 @Transactional
 class SendWelcomeMailService(
     private val repository: NewsletterSubscriptionRepository,
-    private val processedOperationRepository: ProcessedOperationRepository,
+    private val idempotencyGuard: IdempotentOperationExecutor,
 ) : SendWelcomeMailUseCase {
 
     override fun sendWelcomeMail(subscriptionId: SubscriptionId, operationId: OperationId) {
-        if (processedOperationRepository.existsById(operationId)) return // already done -> skip
-        val subscription = repository.find(subscriptionId)
-        log.info { "Sending welcome mail to ${subscription.email}" }      // execute
-        processedOperationRepository.save(operationId)                    // record
+        idempotencyGuard.runOnce(operationId) {
+            val subscription = repository.find(subscriptionId)
+            log.info { "Sending welcome mail to ${subscription.email}" }
+        }
     }
 }
 ```
+
+Because `runOnce` is called inside the service's `@Transactional` boundary, check, business logic and record
+still commit atomically.
 
 ## **Sequence Flow** 📊
 

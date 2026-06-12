@@ -16,7 +16,7 @@ class SendWelcomeMailServiceTest {
 
     private val repository = mockk<NewsletterSubscriptionRepository>()
     private val processedOperationRepository = mockk<ProcessedOperationRepository>()
-    private val underTest = SendWelcomeMailService(repository, processedOperationRepository)
+    private val underTest = SendWelcomeMailService(repository, IdempotentOperationExecutor(processedOperationRepository))
 
     @Test
     fun `should send welcome mail when operation is not processed yet`() {
