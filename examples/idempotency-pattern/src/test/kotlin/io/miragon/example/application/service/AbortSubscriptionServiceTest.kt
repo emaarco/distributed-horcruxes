@@ -16,7 +16,7 @@ class AbortSubscriptionServiceTest {
 
     private val repository = mockk<NewsletterSubscriptionRepository>()
     private val processedOperationRepository = mockk<ProcessedOperationRepository>()
-    private val underTest = AbortSubscriptionService(repository, processedOperationRepository)
+    private val underTest = AbortSubscriptionService(repository, IdempotentOperationExecutor(processedOperationRepository))
 
     @Test
     fun `should abort subscription when operation is not processed yet`() {

@@ -16,7 +16,7 @@ class SendConfirmationMailServiceTest {
 
     private val repository = mockk<NewsletterSubscriptionRepository>()
     private val processedOperationRepository = mockk<ProcessedOperationRepository>()
-    private val underTest = SendConfirmationMailService(repository, processedOperationRepository)
+    private val underTest = SendConfirmationMailService(repository, IdempotentOperationExecutor(processedOperationRepository))
 
     @Test
     fun `should send confirmation mail when operation is not processed yet`() {

@@ -13,7 +13,7 @@ class IncrementSubscriptionCounterServiceTest {
 
     private val counterRepository = mockk<SubscriptionCounterRepository>()
     private val processedOperationRepository = mockk<ProcessedOperationRepository>()
-    private val underTest = IncrementSubscriptionCounterService(counterRepository, processedOperationRepository)
+    private val underTest = IncrementSubscriptionCounterService(counterRepository, IdempotentOperationExecutor(processedOperationRepository))
 
     @Test
     fun `should increment counter when operation is not processed yet`() {

@@ -129,7 +129,8 @@ application/
 domain/            - Domain entities and value objects
 ```
 
-**Key point**: Use `@Transactional` at service layer. Idempotency checks happen there too.
+**Key point**: Use `@Transactional` at service layer. Idempotency is handled there too, via a central
+`IdempotentOperationExecutor` that services wrap their business logic in.
 
 ### Pattern Implementations
 
@@ -155,7 +156,8 @@ Saves messages to DB table in same transaction. Background scheduler sends them 
 
 #### Idempotency Pattern (`examples/idempotency-pattern`)
 
-Services check `processed_operations` table before executing. Uses composite key: `subscriptionId-elementId`.
+Services wrap their business logic in a central `IdempotentOperationExecutor` (`runOnce`), which checks the
+`processed_operations` table before executing. Uses composite key: `subscriptionId-elementId`.
 **Pattern**: Check if processed → Execute → Record completion (all in one transaction).
 
 #### Combined Pattern (`examples/combined-pattern`)
@@ -192,8 +194,8 @@ The BPMN model (`configuration/newsletter.bpmn`) is shared across both examples 
 
 ### Testing
 
-There are currently no automated tests in this repository. When implementing features, focus on manual testing via the
-Bruno API files and monitoring in Operate.
+The example modules have unit tests for their application services (`gradle test`). For end-to-end behavior,
+test manually via the Bruno API files and monitoring in Operate.
 
 ### Distributed Transaction Challenges
 
