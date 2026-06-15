@@ -1,76 +1,28 @@
-# 📘 Detailed Challenges in Process Automation with Zeebe
+# 📘 Detailed Challenges of Distributed Transactions
 
 Distributed transactions are a fundamental challenge in distributed systems architecture.
-When a single operation spans multiple independent systems—such as a database, a process engine, or external APIs—ensuring consistency becomes complex.
-These challenges are not unique to Zeebe; they apply to any distributed system where state must be coordinated across boundaries.
+Whenever a single operation spans multiple independent systems—a database, a message broker, an external API, or a
+process engine—you can no longer guarantee that all of them succeed or fail together. This opens the door to
+inconsistent state.
 
-This document explores these generic distributed system problems through the lens of process automation with Zeebe,
-providing concrete examples, diagrams, and architectural perspectives to illustrate how these challenges manifest in practice.
+This document explains the problem from the ground up: first the **general** distributed-transaction problem and the
+shift from monolithic to distributed systems, then how it **specifically manifests when working with a remote process
+engine** such as Zeebe (Camunda 8). It uses concrete examples, sequence diagrams, and a reference architecture to make
+the failure modes tangible.
 
-## **Why Process Engines Face These Challenges** ⚙️
+> ℹ️ **Not a Zeebe problem.** None of these challenges are unique to Zeebe, and none of them mean a remote engine is
+> "worse" than an embedded one. They are the price of distribution—paid in exchange for scalability, resilience, and
+> independent deployment. See [_Embedded vs. remote engines: a trade-off, not a flaw_](#embedded-vs-remote-engines-a-trade-off-not-a-flaw).
 
-Process engines like Zeebe are themselves distributed systems designed for high availability, scalability, and fault tolerance.
-As a distributed system, Zeebe manages its own state independently from your application's database,
-which creates a **boundary** between two systems that must be kept synchronized.
+## 🎮 When Production Breaks: A Concrete Symptom
 
-### **The Core Challenge**
+Imagine a newsletter platform whose subscription flow has run smoothly for months. Then support tickets start piling up:
+_"I signed up but never received a confirmation email."_ When you investigate, you find a contradictory pattern—**there
+is no subscription in the database**, yet **there is a running process instance** in the engine, stuck on an incident
+that always reads the same: `NoSuchElementException`. The task that should send the confirmation email cannot find the
+subscription it was told to work on.
 
-When your application interacts with Zeebe, you're coordinating state across two independent systems:
-- **Your database**: Holds your business data (e.g., user subscriptions, orders, accounts)
-- **The process engine**: Holds workflow state (e.g., which tasks are active, completed, or pending)
-
-These systems operate asynchronously and can fail independently.
-A database transaction might succeed while the message to Zeebe fails, or vice versa.
-Without proper coordination mechanisms, this leads to **inconsistent state** across system boundaries.
-
-### **Zeebe's Design Characteristics**
-
-Zeebe assumes that tasks can execute as soon as they're triggered:
-- It operates with **at-least-once delivery** semantics, meaning jobs may be delivered multiple times
-- It's designed for **high throughput** and assumes workers can handle jobs immediately
-- It maintains **its own state** independently from your application's database
-
-These design choices are intentional and provide excellent scalability and reliability,
-but they require your application to implement proper coordination patterns to maintain consistency.
-
-### **A Concrete Example**
-
-Let's examine these challenges through a **newsletter subscription process**,
-which demonstrates how distributed transaction problems manifest in a real-world scenario.
-
-## **Example Process: Newsletter Subscription** 📧
-
-This process involves the following steps:
-
-1. A user submits a subscription form.
-2. The system saves the subscription data in a database.
-3. The system notifies Zeebe to handle the process, triggering tasks like sending a confirmation email and updating
-   subscription status.
-
-Here’s the process diagram:
-
-![Newsletter Process](assets/newsletter.png)
-
-## **Architecture Overview** 🏗️
-
-The newsletter subscription process is implemented in a **hexagonal architecture**.
-Transactions are defined at the **service level**, which interacts with the database and the external process engine (
-Zeebe) through well-defined ports.
-
-The architecture ensures clear separation of concerns but introduces challenges
-when the database and the process engine need to remain synchronized.
-
-### **Architecture Diagram**:
-
-![Architecture Diagram](assets/architecture.png)
-
-### **How It Works**:
-
-1. **Service Layer**: Contains the business logic and transaction handling.
-2. **Database**: Stores subscription data.
-3. **Process Engine**: Orchestrates tasks like sending emails and updating subscription statuses.
-
-Here’s an example of how the service might look:
+The code looks correct. It saves the subscription and notifies the engine inside a single `@Transactional` method:
 
 ```kotlin
 @Service
@@ -79,135 +31,236 @@ class SubscribeToNewsletterService(
     private val repository: NewsletterSubscriptionRepository,
     private val processPort: NewsletterSubscriptionProcess
 ) {
-    override fun subscribe(command: SubscribeToNewsletterUseCase.Command): SubscriptionId {
+    fun subscribe(command: SubscribeToNewsletterUseCase.Command): SubscriptionId {
         val subscription = buildSubscription(command)
-        repository.save(subscription)
-        processPort.submitForm(subscription.id)
+        repository.save(subscription)        // local database
+        processPort.submitForm(subscription.id)  // remote engine
         return subscription.id
     }
 }
 ```
 
-In this setup:
+The catch: `@Transactional` only controls the **local database** transaction. It has no power over the engine, which
+runs as a separate system. So if the message reaches the engine but the database commit then fails, only the database
+rolls back. The subscription disappears—but the process is already running, looking for data that no longer exists.
 
-- The service saves subscription data to the database.
-- It immediately notifies the process engine (via `submitForm`) to start the workflow.
+This is the **distributed transaction problem**, and that incident is its signature in your logs.
 
-However, this approach can lead to several challenges when database transactions and engine interactions are not
-properly synchronized.
+## 🌐 From Monolithic to Distributed
 
-## **Challenges**
+To understand why this problem catches teams off guard, it helps to look at where many of us come from: the
+**monolithic, single-system world**.
 
-The following challenges represent common distributed systems problems that occur when coordinating state across independent systems.
-Each challenge illustrates a specific failure mode and how it manifests in the context of process automation.
+For years, business logic, database access, and often the process engine itself lived together in one application,
+writing to one database, protected by **one transaction per operation**. An embedded engine (e.g. Camunda 7 running as a
+library) shared that same transaction. Same transaction meant same fate: either the subscription **and** the process
+instance were saved, or neither was. This safety came from the **ACID** guarantees of a single database:
 
-### **1. Premature Execution 🚨**
+- **Atomicity** — a transaction either succeeds completely or fails completely.
+- **Consistency** — every transaction moves the database from one valid state to another.
+- **Isolation** — concurrent transactions don't see each other's uncommitted changes.
+- **Durability** — once committed, changes survive failures.
 
-**The Generic Problem**: In distributed systems, notifying a dependent system before persisting state creates race conditions.
-If the notification succeeds but persistence fails, the dependent system operates on non-existent or incomplete data.
+### Even monoliths weren't fully safe
 
-**How It Manifests with Zeebe**: The process engine starts tasks **before your database transaction is committed**,
-causing tasks to rely on uncommitted or incomplete data.
+ACID never reached across the network. The moment a monolith called an email service, a message broker, or a REST API,
+it left ACID's protection—because a local transaction can't roll back a remote side effect. The same distributed
+transaction problem existed even then. It was simply **less visible**, because most operations stayed inside the system
+and the engine was not part of the problem.
 
-- **Example**: After submitting the subscription form, the engine starts a task to send a confirmation email. However,
-  if the database transaction fails, the email task cannot find the subscription data.
-- **Impact**: Tasks fail unexpectedly, requiring retries or manual intervention to recover.
+### Remote engines remove the safety net
 
-#### **Process Flow**:
+With a remote engine like Zeebe, this changes by design. The engine becomes an external system you coordinate with over
+the network, with its own database and its own commit decisions. The architecture now has **three independent pieces**:
+your application + its database, the engine + its infrastructure, and the network in between.
+
+![Architecture Diagram](assets/architecture.png)
+
+What was once an _occasional_ problem—only when you deliberately integrated an external service—now applies to **every
+single interaction** with your process engine. And the code looks almost identical, which is what makes it deceptive.
+Beneath the surface, you no longer operate under ACID, but under **BASE**:
+
+- **Basically Available** — the system stays operational during partial failures.
+- **Soft State** — state may change over time as systems converge.
+- **Eventual Consistency** — all systems reach the same state eventually, just not instantly.
+
+BASE isn't a limitation—it's a **trade-off**. You exchange immediate, tightly-coupled consistency for systems that scale
+and fail independently.
+
+### Embedded vs. remote engines: a trade-off, not a flaw
+
+It's tempting to conclude that embedded engines are "better" because they avoid these challenges. They aren't—they make
+a different trade. Embedding _was_ an option with Camunda 7; with Zeebe it isn't. But the same challenges appear in C7
+too the moment it runs as a separate service over the network. So **neither approach is inherently better or worse**.
+A remote engine trades coordination complexity for scalability, resilience, and cloud-native deployment—benefits most
+teams want. The point of this document is not to discourage remote engines, but to apply the right patterns so you keep
+those benefits without the inconsistencies.
+
+## ❌ The Universal Challenge
+
+The core problem is simple to state: **when an operation spans multiple independent systems, you cannot guarantee they
+all succeed or fail together.**
+
+Within a single database, the database itself acts as a **transaction coordinator**: it locks resources, coordinates the
+commit, and rolls everything back on error. Across system boundaries, **no such coordinator exists**. Each system commits
+or rolls back on its own, with no mechanism to make them agree. So **partial success** becomes possible—one system
+commits while the other fails—and there is no automatic way to repair the resulting inconsistency.
+
+### Where this surfaces
+
+This is not specific to process engines. The same challenge appears whenever you coordinate across independent systems:
+
+- **Microservices & external APIs** — You mark a user as unsubscribed in your database and call an email provider to
+  confirm it. The provider sends the email, but then your database commit fails. The user gets a confirmation email yet
+  remains subscribed.
+- **Event-driven systems & message queues** — A content system publishes a new edition to a publishing system via Kafka.
+  The publishing system fails to persist it. The two systems now hold contradictory views of reality.
+- **Remote process engines** — The case this repository focuses on, explored in detail below.
+
+### The consequences
+
+- **Data inconsistencies** — different systems hold contradictory views of reality.
+- **Lost or partial operations** — work that should happen never happens, or only partially.
+- **Duplicate operations** — retries meant to fix failures instead create duplicates (e.g. two confirmation emails).
+- **Manual intervention** — without automatic recovery, humans must reconcile state, which doesn't scale.
+
+## 🔮 In Context: Coordinating with a Remote Engine
+
+When you adopt Zeebe, you build a distributed system: your application and the engine coordinate over the network, each
+with its own database and independent commit decisions. The distributed transaction problem therefore affects **every
+interaction**—every message you send and every job your workers complete.
+
+Zeebe's design choices make this explicit, and they are intentional trade-offs that buy scalability and reliability:
+
+- It uses **at-least-once delivery**—jobs and messages may be delivered more than once.
+- It assumes workers can pick up and execute jobs **as soon as they are triggered**.
+- It maintains **its own state**, independent of your database.
+
+The failures that result cluster around the two moments when your application crosses the boundary: **when it sends
+messages to the engine**, and **when workers acknowledge completed jobs**. The table below maps each challenge to the
+pattern that addresses it.
+
+| #   | Challenge                              | When it happens     | Addressed by                          |
+|-----|----------------------------------------|---------------------|---------------------------------------|
+| 1   | Phantom instance (process without data)| Sending messages    | After-Transaction, Outbox             |
+| 2   | Premature execution: reading stale data| Sending messages    | After-Transaction, Outbox             |
+| 3   | Premature execution: overwriting data  | Sending messages    | Outbox (ordered), process modeling    |
+| 4   | Duplicate delivery                     | Both sides          | Idempotency (+ `messageId` short-term)|
+| 5   | Job completion lost (connectivity)     | Acknowledging jobs  | Idempotency                           |
+| 6   | Job no longer available (cancellation) | Acknowledging jobs  | Process modeling, compensation/Saga   |
+
+### Example process: newsletter subscription
+
+All examples use the same flow, implemented in a **hexagonal architecture** with transaction boundaries at the service
+layer:
+
+1. A user submits a subscription form.
+2. The service saves the subscription in the database.
+3. The service notifies the engine, which orchestrates tasks like sending a confirmation email and, after confirmation,
+   a welcome email.
+
+![Newsletter Process](assets/newsletter.png)
+
+## 📤 Challenges When Sending Messages to the Engine
+
+### 1. Phantom Instance: Process Runs Without Data 🚨
+
+**The generic problem**: Notifying a dependent system before persisting state creates a race. If the notification
+succeeds but persistence fails, the dependent system operates on data that doesn't exist.
+
+**How it manifests**: The service sends the message to the engine, the engine starts the process immediately, and then
+the database transaction **fails and rolls back**. The engine has a running instance, but the business data it needs is
+gone—workers fail with errors like `NoSuchElementException`. This is the production symptom from the opening section.
+
+> Addressed by **After-Transaction** (send only after commit) and the **Outbox** pattern (persist the message atomically,
+> deliver it afterwards).
 
 ```mermaid
 sequenceDiagram
+    autonumber
     participant User
-    participant Engine
-    participant Worker
-    participant Controller
     participant Service
-    participant DB
-    User ->> Controller: 1. subscribe
-    Controller ->> Service: 2. create subscription
-    Service ->> Engine: 3. start process
-    Service ->> DB: 4. commit transaction
-    Worker ->> Engine: 5. get job
-    Worker ->> Service: 6. send confirmation
-    Service ->> DB: 7. load subscription
+    participant DB as Database
+    participant Engine
+    User ->> Service: subscribe
+    Service ->> DB: insert subscription (uncommitted)
+    Service ->> Engine: start process
+    Engine -->> Service: process started
+    Service ->> DB: COMMIT ❌
+    DB ->> DB: rollback subscription
+    DB -->> Service: commit failed
+    Note over DB, Engine: Subscription gone, but the process keeps running
 ```
 
-### **2. Out-of-Sync States: Engine Ahead of Service 🔄**
+### 2. Premature Execution: Reading Stale Data 🏃
 
-**The Generic Problem**: When coordinating multiple systems, partial failures can cause state divergence.
-If system A successfully notifies system B, but then system A's operation fails, system B proceeds with an action
-that should never have been triggered.
+**The generic problem**: Even when persistence eventually succeeds, a dependent system may act on the data **before** the
+commit completes—a timing race.
 
-**How It Manifests with Zeebe**: If the database transaction fails **after notifying Zeebe**,
-the engine continues executing tasks with outdated data.
+**How it manifests**: The commit ultimately succeeds, but the engine assigns the first job before it does. The worker
+queries for the subscription and finds nothing yet. Unlike the phantom instance, the data _will_ exist shortly—but the
+worker reached it too early.
 
-- **Example**: A user confirms their subscription, triggering an update in the database and notifying Zeebe. If the
-  database update fails, the engine still proceeds as though the subscription was updated.
-- **Impact**: Zeebe's state advances while the database remains unchanged, creating inconsistencies.
+> Addressed by **After-Transaction** and the **Outbox** pattern—both guarantee the message is sent only _after_ the
+> commit.
 
-### **3. Out-of-Sync States: Conflicting Data 🔁**
+### 3. Premature Execution: Overwriting Data 🔀
 
-**The Generic Problem**: Distributed systems often process operations concurrently.
-Without proper ordering guarantees, concurrent operations can execute out of sequence,
-leading to race conditions, data corruption, or deadlocks.
+**The generic problem**: Without ordering guarantees, concurrent operations can execute out of sequence and overwrite
+each other.
 
-**How It Manifests with Zeebe**: Tasks in the engine may start out of order, leading to overwrites or even deadlocks.
+**How it manifests**: A follow-up task commits its changes before a preceding task has finished—particularly damaging
+when both write the same data. The result is corrupted state and race conditions that need manual resolution.
 
-- **Example**: The process involves confirming a subscription and then sending a welcome email. If the email task
-  executes before the confirmation task finishes, database updates may happen in the wrong order.
-- **Impact**: Out-of-order tasks cause data conflicts or deadlocks, requiring manual fixes or complex rollback
-  mechanisms.
+> Addressed by **ordered outbox processing** and by **process modeling** (splitting a task that touches multiple systems
+> into separate, retryable steps).
 
-### **4. Retry Behavior and Duplicate Calls 🔁**
+## 📥 Challenges When Acknowledging Jobs
 
-**The Generic Problem**: Distributed systems often retry failed operations to handle transient failures.
-Without idempotency mechanisms, retries can result in duplicate operations being processed multiple times,
-leading to incorrect state or side effects.
+A worker can successfully process a job and commit its changes, yet fail to tell the engine it's done. What happens next
+depends on _why_ the acknowledgment failed.
 
-**How It Manifests with Zeebe**: Distributed systems often retry failed tasks, but retries can result in duplicate operations if not handled properly.
+### 4. Duplicate Delivery 🔁
 
-- **Example**: A service retries sending a message to Zeebe due to a database timeout. Each retry generates duplicate
-  messages in the engine.
-- **Impact**: Duplicates create unnecessary operations, affecting system performance and reliability.
+**The generic problem**: Distributed systems retry to handle transient failures, and many guarantee **at-least-once
+delivery**—a message or job arrives, but possibly more than once. This is true of message brokers like Kafka and of the
+Outbox pattern's own retries, not just Zeebe.
 
-### **5. Job Completion Failure: Network Issues 🌐**
+**How it manifests**: A job (or message) is delivered twice. Without protection, the side effect runs twice—two welcome
+emails, a counter incremented by two, a double charge.
 
-**The Generic Problem**: In asynchronous distributed systems, a worker may complete an operation successfully but fail to notify
-the coordinator due to network failures. This creates uncertainty about whether the operation completed,
-potentially leading to duplicate retries.
+> Addressed by **idempotency** on the receiving side (a processed-operations log). Zeebe's `messageId` adds short-term
+> deduplication while a message sits in the engine's buffer (its TTL, typically seconds)—useful against bursts of
+> retries, but **not** long-term idempotency. See the
+> [message uniqueness docs](https://docs.camunda.io/docs/components/concepts/messages/#message-uniqueness). Combine both.
 
-**How It Manifests with Zeebe**: Even if the worker completes a task successfully, network issues may prevent it from notifying Zeebe.
+### 5. Job Completion Failure: Connectivity Issues 🌐
 
-- **Example**: A worker sends a confirmation email but cannot mark the job as complete due to a network failure.
-- **Impact**: The database is updated, but Zeebe's state remains incomplete, requiring manual intervention to sync
-  states.
+**The generic problem**: A worker completes its work but can't notify the coordinator due to a network failure, leaving
+uncertainty about whether the operation completed.
 
-#### **Job Completion Flow**:
+**How it manifests**: The worker sends the confirmation and commits to the database, but the "complete job" call fails on
+the network. From the engine's perspective the job is still active, so it will **retry after a timeout**—delivering the
+job again.
 
-```mermaid
-sequenceDiagram
-    participant Engine
-    participant Worker
-    participant Controller
-    participant Service
-    participant DB
-    Worker ->> Engine: 1. get job
-    Worker ->> Service: 2. send confirmation
-    Service ->> DB: 3. load subscription
-    Service ->> Service: 4. Update subscription
-    Service ->> DB: 5. Save & commit subscription
-    Service ->> Worker: 6. return result
-    Worker ->> Engine: 7. complete job
-```
+> Manageable with **idempotency**: the retry is safely skipped because the operation is already recorded.
 
-### **6. Job Completion Failure: Task No Longer Available ⏳**
+### 6. Job Completion Failure: Task No Longer Available ⏳
 
-**The Generic Problem**: In event-driven systems, work assignments can be cancelled or invalidated while in progress.
-A worker may complete an operation unaware that the coordinator has already moved on,
-resulting in unnecessary work or state changes that need compensation.
+**The generic problem**: Work assignments can be cancelled while in progress. A worker may finish, unaware the
+coordinator already moved on, producing changes that now need compensation.
 
-**How It Manifests with Zeebe**: A worker might complete a task after the engine has already canceled or invalidated it due to timers, cancellations, or
-other intermediate events.
+**How it manifests**: The job gets cancelled mid-processing—for example by an **interrupting boundary event** (a timer or
+message) firing on the task or an enclosing subprocess. The worker finishes its database changes, but the job is no
+longer active, so the engine rejects the completion. The engine never learns the work was done, leaving a permanent
+inconsistency.
 
-- **Example**: A worker updates a subscription, but a timer cancels the workflow before the task finishes.
-- **Impact**: The worker's changes are unnecessary, creating mismatches and requiring rollback or compensating actions.
+> Hardest to prevent. Mitigate through **process modeling**—prefer interrupting boundary events on elements with an
+> explicit wait state (message-receive and user tasks), where _you_ control completion and can catch the rejection—and
+> through **compensation / the Saga pattern** to explicitly undo work that has already happened.
+
+---
+
+> 💡 **Want the solutions?** Each challenge is solved by one or more patterns implemented in this repository. See the
+> [main README](README.md) for the pattern catalog and runnable examples, and the
+> [conceptual deep-dive blog post](https://medium.com/p/d4bbbca295d6) for the full narrative.

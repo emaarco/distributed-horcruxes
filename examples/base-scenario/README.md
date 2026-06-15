@@ -113,8 +113,8 @@ In high-throughput scenarios, workers may pick up jobs before the transaction co
 
 ### **Setup**
 1. Start the infrastructure: `cd stack && docker-compose up`
-2. Run this example application (port 8082)
-3. Monitor Operate at http://localhost:9081 (credentials: demo/demo)
+2. Run this example application (port 8081)
+3. Monitor Operate at http://localhost:8080/operate (credentials: demo/demo)
 
 ### **Reproduce Premature Execution**
 1. Add a sleep or delay before the transaction commits (simulate slow commit)

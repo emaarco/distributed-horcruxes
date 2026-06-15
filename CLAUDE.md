@@ -19,7 +19,8 @@ can cause inconsistent states. The examples show different approaches to handle 
 # Start required infrastructure (Zeebe, Operate, PostgreSQL, Elasticsearch)
 cd stack && docker-compose up
 
-# Access Operate UI at http://localhost:9081 (credentials: demo/demo)
+# Access Operate UI at http://localhost:8080/operate (credentials: demo/demo)
+# (Camunda 8.9 consolidated orchestration cluster serves Operate on port 8080)
 ```
 
 ### Build & Run
@@ -30,7 +31,7 @@ gradle build
 
 # Build specific example
 gradle :examples:<pattern-name>:build
-# Available: base-scenario, after-transaction, outbox-pattern, idempotency-pattern
+# Available: base-scenario, after-transaction, outbox-pattern, idempotency-pattern, combined-pattern, saga-pattern
 
 # Run tests
 gradle test
@@ -41,7 +42,7 @@ gradle clean
 
 ### Running Examples
 
-Each example is a Spring Boot application on port 8081 (except base-scenario on 8082).
+Each example is a Spring Boot application on port 8081 (except saga-pattern on 8083).
 
 Run the main class:
 
