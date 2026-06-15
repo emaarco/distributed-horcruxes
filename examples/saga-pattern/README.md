@@ -185,7 +185,7 @@ production systems.
 1. **Start infrastructure**: `cd stack && docker-compose up`
 2. **Run the application**: Execute `ExampleApplication.kt` (port 8083)
 3. **Trigger subscription**: Use Bruno to execute `subscribe-to-payed-newsletter.bru`
-4. **Monitor in Operate**: Visit http://localhost:9081/operate (demo/demo)
+4. **Monitor in Operate**: Visit http://localhost:8080/operate (demo/demo)
 5. **Observe outcomes**:
     - **Payment success**: Process completes, spot remains reserved
     - **Payment failure**: Compensation triggers, spot is released

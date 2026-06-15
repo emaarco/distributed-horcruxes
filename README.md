@@ -1,108 +1,96 @@
 # 🧙‍♂️ Distributed Horcruxes
 
-> 🚧 This repository is subject of constant change. It deals with a problem that has not yet been examined and solved in
-> depth in the context of remote process engines (like Zeebe).
+> 🚧 This repository is subject to constant change. It deals with a problem that is still rarely examined in depth in the
+> context of **remote** process engines (like Zeebe / Camunda 8).
 
 ## **Introduction** 🗂
 
-Distributed transactions are a common challenge in distributed systems.
-When multiple services or systems need to coordinate to ensure consistent data,
-failures—like communication issues or incomplete updates—can cause problems.
+Distributed transactions are a common challenge in distributed systems. Whenever a single operation spans multiple
+independent systems, failures—communication issues, partial updates, timeouts—can leave those systems in contradictory
+states.
 
-Much like horcruxes, distributed transactions are tricky to manage,
-dangerous if left unchecked, and can create chaos in your system if not handled properly.
+Much like horcruxes, distributed transactions are tricky to manage, dangerous if left unchecked, and can create chaos in
+your system if not handled properly.
 
-This is particularly relevant when working with external systems,
-such as process engines like Zeebe or Camunda 7, where state is managed independently.
-If proper strategies aren’t in place, workflows or interactions may lead to inconsistencies
-between the process engine and your application’s database.
+This is especially relevant when working with a **remote** process engine such as Zeebe, whose state lives in a separate
+system from your application's database. Without the right strategies, workflows can drift out of sync with your data.
+Note that this is a **trade-off, not a defect**: a remote engine exchanges coordination complexity for scalability,
+resilience, and cloud-native deployment. The same challenges appear with any external system—APIs, message brokers, or
+an embedded engine the moment it runs over the network.
 
-This repository aims to provide practical examples and proven patterns
-to handle these distributed transaction problems effectively in a Spring Boot and Zeebe environment.
+This repository provides practical examples and proven patterns to handle these problems in a Spring Boot and Zeebe
+environment.
 
 ## **The Distributed Transaction Problem** 🕵️
 
-Distributed transactions are a generic problem in software architecture that occurs when a single operation spans
-multiple systems, such as:
+The problem is generic in software architecture and arises when one operation spans multiple systems, such as:
 
-- A **database** for storing application data.
+- A **database** for your business data.
 - A **process engine** like Zeebe for orchestrating workflows.
 - Other systems like **APIs** or **message brokers**.
 
-Problems arise when we can’t guarantee that all systems succeed or fail together. This can lead to:
+Within a single database, the database acts as a transaction coordinator—everything commits or rolls back together.
+Across independent systems, **no such coordinator exists**, so you can't guarantee they all succeed or fail together.
+This leads to:
 
-- **Inconsistent states**: Some systems finish their operations, while others fail.
-- **Duplicate actions**: Systems retry failed tasks, causing duplicate operations.
-- **Data conflicts**: Tasks execute out of order or with incomplete data.
+- **Inconsistent states** — some systems finish their work while others fail.
+- **Duplicate actions** — retries create duplicate operations.
+- **Data conflicts** — tasks execute out of order or on incomplete data.
 
-## **The Challenge with Zeebe** ⚙️
+A remote engine like Zeebe is itself a distributed system, designed for high availability and scalability. It manages
+its own state independently from your database, creating a boundary that must stay synchronized. The most common symptom
+is a **timing problem**: the engine assumes a task can start as soon as it's triggered, but your database transaction may
+not be committed yet—or may fail during commit.
 
-Zeebe, as a distributed system itself, is designed for high availability and scalability.
-This means it manages its own state independently from your application's database,
-creating a boundary between two systems that must remain synchronized.
-
-When coordinating these two independent systems, various challenges emerge.
-One of the most common issues is a **timing problem**: Zeebe assumes that tasks can start as soon as they are triggered,
-but your database transaction might not be committed yet—or might fail during the commit.
-
-Consider this simple scenario:
-
-1. You save data to the database and immediately notify Zeebe to start a process.
-2. If the database transaction fails, Zeebe has already started tasks based on incomplete or incorrect data.
-
-Without proper strategies, this can cause:
-
-- Tasks to fail unexpectedly.
-- The database and process engine states to drift apart.
-- Retrying the same operation to produce duplicates.
-
-> 💡 **Want to understand these challenges in more detail?**<br/>
-> Check out the [detailed breakdown of distributed transaction challenges](CHALLENGES.md),
-> which includes examples, diagrams, and a reference architecture to explain these problems in depth.
+> 💡 **Want to understand these challenges in depth?**<br/>
+> Read the [detailed breakdown of distributed transaction challenges](CHALLENGES.md)—from the general problem (ACID vs.
+> BASE) to the specific failure modes when coordinating with a remote engine, with diagrams and a reference architecture.
+> For the full narrative, see the [companion blog post](https://medium.com/p/d4bbbca295d6).
 
 ## **How Do We Solve This?** 🛠
 
-Distributed transactions are a common problem in software architecture,
-and luckily, there are some **well-known and tested solutions** to address them.
-These solutions are applicable across many distributed systems and can also be adapted to work with Zeebe.
-
-Here are some of the most effective patterns, we want to explore:
+These are well-known problems with well-tested solutions. They apply across distributed systems and adapt cleanly to
+Zeebe. This repository explores the following patterns:
 
 ### **1. After-Transaction Hook** ✅
 
-Trigger Zeebe only after the database transaction is successfully committed.
-This avoids notifying Zeebe with incomplete or uncommitted data.
+Trigger the engine only **after** the database transaction commits, avoiding notifications based on uncommitted data.
+Simple, but offers no retry if the call then fails.
 
 ### **2. Outbox Pattern** 📦
 
-Save Zeebe messages in an "outbox" table as part of the same database transaction.
-A scheduler or worker then reliably sends these messages to Zeebe after the transaction is complete.
+Save engine messages in an "outbox" table within the **same** transaction. A background scheduler reliably delivers them
+afterwards, with retries. Reliable, at the cost of added infrastructure and slight latency.
 
 ### **3. Idempotency Pattern** 🔁
 
-Track completed operations to prevent duplicate processing when Zeebe retries job workers.
-Uses a database table to record which operations have been completed.
+Track completed operations so duplicate deliveries (at-least-once semantics) are processed only once. Uses a database
+table that records which operations have already run.
 
-### **4. Saga Pattern** ⏪
+### **4. Combined Pattern** 🛡️
 
-Handle distributed transaction rollbacks using BPMN compensation events.
-When a later step fails, compensation handlers automatically undo previously completed operations.
+Outbox **and** idempotency together—the outbox secures _your service → engine_, idempotency secures _engine → your
+service_—for end-to-end safety on both sides of the boundary.
 
-These patterns are widely used in distributed systems
-and provide different trade-offs between simplicity, reliability, and performance.
+### **5. Saga Pattern** ⏪
+
+Handle rollbacks of already-completed work using BPMN compensation events. When a later step fails, compensation
+handlers undo previous operations.
+
+These patterns offer different trade-offs between simplicity, reliability, and performance.
 
 ## **Examples in This Repository** 📚
 
-This repository contains examples that demonstrate both the problem and proven solutions:
+Each example demonstrates either the problem or a solution:
 
 - ⚠️ [**Base Scenario**](./examples/base-scenario/README.md):
   The naive implementation that demonstrates what goes wrong without proper transaction handling.
 - ✅ [**After-Transaction Hook**](./examples/after-transaction/README.md):
-  Ensuring Zeebe interactions occur only after the transaction commits.
+  Ensuring engine interactions occur only after the transaction commits.
 - 📦 [**Outbox Pattern**](./examples/outbox-pattern/README.md):
   Using a database outbox and scheduler for reliable message delivery.
 - 🔁 [**Idempotency Pattern**](./examples/idempotency-pattern/README.md):
-  Preventing duplicate processing from Zeebe's at-least-once delivery semantics.
+  Preventing duplicate processing from at-least-once delivery semantics.
 - 🛡️ [**Combined Pattern**](./examples/combined-pattern/README.md):
   Outbox + Idempotency together for end-to-end transaction safety on both sides of the boundary.
 - ⏪ [**Saga Pattern**](./examples/saga-pattern/README.md):
@@ -110,37 +98,46 @@ This repository contains examples that demonstrate both the problem and proven s
 
 ## **Setup** ⚙️
 
-Getting started with the examples is simple! Follow these steps:
+Getting started is simple. You'll need a **JDK 21+** and a container runtime (Docker or Podman).
 
-**1: Start the Infrastructure**:  
-Navigate to the `stack` folder and bring up the infrastructure (Zeebe, Operate, etc.) using Docker Compose:
+**1: Start the Infrastructure**
 
-   ```bash
-   cd stack
-   docker-compose up
-   ```
+The stack uses the consolidated **Camunda 8 orchestration cluster** (a single container bundling Zeebe, Operate, and
+Tasklist) plus PostgreSQL and Elasticsearch. Bring it up from the `stack` folder:
 
-**2: Run the Example**:  
-Go to the folder of the example you want to try and start the application by running the `ExampleApplication.kt` main
-class.
-Each example is a standard Spring Boot application,
-so you can run it using your preferred IDE or command line.
+```bash
+cd stack
+docker-compose up
+```
 
-**3: Interact with the Process**:  
-Each example uses the same newsletter subscription process.
-To interact with the process, you need to send requests to the REST API provided by the example services.
+**2: Run an Example**
 
-- To make this easier, there are predefined API call files located in the [bruno](bruno) directory.
-- If you use [Bruno](https://www.usebruno.com/), simply open the folder and execute these files.
-- Alternatively, you can use any other tool like curl or Postman to send the requests manually.
+Each example is a standard Spring Boot application. Run its `ExampleApplication.kt` main class from your IDE, or from the
+command line:
 
-**4: Monitor the Processes**:  
-Once the infrastructure is running, you can monitor and debug workflows using **Operate**
-at [http://localhost:9091/operate](http://localhost:9091/operate).
-The credentials are `demo/demo`.
+```bash
+./gradlew :examples:<pattern-name>:bootRun
+# e.g. ./gradlew :examples:outbox-pattern:bootRun
+```
+
+> ⚠️ **Run one example at a time.** All examples bind port **8081**, except the **saga-pattern** which uses **8083**.
+> Starting two on the same port will fail.
+
+**3: Interact with the Process**
+
+Each example uses the same newsletter subscription process. Predefined API calls live in the [bruno](bruno) directory
+(open them with [Bruno](https://www.usebruno.com/), or replicate them with curl/Postman):
+
+- `subscribe-to-newsletter.bru` — start a subscription (port 8081 examples).
+- `confirm-subscription.bru` — confirm a subscription (port 8081 examples).
+- `subscribe-to-payed-newsletter.bru` — start the paid-newsletter flow used by the **saga-pattern** (port 8083).
+
+**4: Monitor the Processes**
+
+Monitor and debug workflows in **Operate**, served by the orchestration cluster at
+[http://localhost:8080/operate](http://localhost:8080/operate). Credentials are `demo/demo`.
 
 ## **Contribute to This Project** 🤝
 
-Distributed transactions are tricky, but together we can solve them!
-If you have ideas, improvements, or new examples,
-feel free to contribute by opening a pull request or issue.
+Distributed transactions are tricky, but together we can solve them! If you have ideas, improvements, or new examples,
+feel free to open a pull request or issue.
