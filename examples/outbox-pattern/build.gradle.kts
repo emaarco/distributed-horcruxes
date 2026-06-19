@@ -1,6 +1,6 @@
-import io.github.emaarco.bpmn.adapter.GenerateBpmnModelsTask
-import io.github.emaarco.bpmn.domain.shared.OutputLanguage
-import io.github.emaarco.bpmn.domain.shared.ProcessEngine
+import io.miragon.bpmn.adapter.GenerateBpmnModelsTask
+import io.miragon.bpmn.domain.shared.OutputLanguage
+import io.miragon.bpmn.domain.shared.ProcessEngine
 
 plugins {
     alias(libs.plugins.kotlinJvm)
@@ -33,7 +33,7 @@ sourceSets {
     }
 }
 
-tasks.register<GenerateBpmnModelsTask>("generateBpmnModels") {
+tasks.named<GenerateBpmnModelsTask>("generateBpmnModelApi") {
     baseDir = "${projectDir}/../../configuration"
     filePattern = "newsletter.bpmn"
     outputFolderPath = "$projectDir/src/main/kotlin"
@@ -57,5 +57,5 @@ tasks.withType<Test> {
 }
 
 tasks.named("build") {
-    dependsOn("generateBpmnModels")
+    dependsOn("generateBpmnModelApi")
 }
