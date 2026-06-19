@@ -67,7 +67,7 @@ Use Bruno API client with files in `bruno/` directory:
 
 ```bash
 # Generate Kotlin models from BPMN files
-gradle generateBpmnModels
+gradle generateBpmnModelApi
 
 # BPMN source: configuration/newsletter.bpmn
 # Generated output: examples/*/src/main/kotlin/io/miragon/example/adapter/process/

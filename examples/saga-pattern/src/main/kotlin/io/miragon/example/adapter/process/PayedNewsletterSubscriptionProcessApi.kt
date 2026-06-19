@@ -3,13 +3,13 @@
 
 package io.miragon.example.adapter.process
 
-import io.github.emaarco.bpmn.runtime.BpmnEngine
-import io.github.emaarco.bpmn.runtime.BpmnFlow
-import io.github.emaarco.bpmn.runtime.BpmnRelations
-import io.github.emaarco.bpmn.runtime.ElementId
-import io.github.emaarco.bpmn.runtime.MessageName
-import io.github.emaarco.bpmn.runtime.ProcessId
-import io.github.emaarco.bpmn.runtime.VariableName
+import io.miragon.bpmn.runtime.BpmnEngine
+import io.miragon.bpmn.runtime.BpmnFlow
+import io.miragon.bpmn.runtime.BpmnRelations
+import io.miragon.bpmn.runtime.ElementId
+import io.miragon.bpmn.runtime.MessageName
+import io.miragon.bpmn.runtime.ProcessId
+import io.miragon.bpmn.runtime.VariableName
 import kotlin.String
 import kotlin.Suppress
 
@@ -123,7 +123,7 @@ object PayedNewsletterSubscriptionProcessApi {
           id = "Flow_1gahada",
           sourceRef = "gateway_paymentSuccessful",
           targetRef = "endEvent_paymentFailed",
-          condition = $$"""=paymentSuccessful = false""",
+          condition = "=paymentSuccessful = false",
         )
 
     val FLOW_1_LXG_97_J: BpmnFlow = BpmnFlow(
