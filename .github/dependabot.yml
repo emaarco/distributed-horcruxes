@@ -1,53 +1,54 @@
 version: 2
-updates:
 
-  # Config for backend-dependencies
-  - package-ecosystem: "gradle"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    groups:
-      backend-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "patch"
-          - "minor"
-          - "major"
-
-  # Config for Docker Compose dependencies
-  - package-ecosystem: "docker-compose"
-    directories:
-      - "/stack"
+# Backend stack: gradle deps + the docker-compose images they run on move
+# together in one monthly PR, so coupled pairs (camunda image + spring-boot
+# starter, postgres image + JDBC driver) never drift across separate PRs.
+multi-ecosystem-groups:
+  backend:
     schedule:
       interval: "monthly"
     labels:
       - "dependencies"
-    assignees:
-      - "emaarco"
-    groups:
-      docker-compose:
-        patterns:
-          - "*"
-        update-types:
-          - "patch"
-          - "minor"
-          - "major"
 
-  # Config for GitHub Actions
+updates:
+
+  # Backend code dependencies
+  - package-ecosystem: "gradle"
+    directory: "/"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
+
+  # Backend infrastructure images
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/stack"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
+
+  # GitHub Actions — standalone, keeps its own cooldown and security grouping
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
     labels:
       - "dependencies"
-    assignees:
-      - "emaarco"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
           - "patch"
           - "minor"
           - "major"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
