@@ -13,3 +13,7 @@ post {
 params:path {
   subscriptionId: {{subscriptionId}}
 }
+
+assert {
+  res.status: eq 200
+}
