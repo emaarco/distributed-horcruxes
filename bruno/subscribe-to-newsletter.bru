@@ -21,3 +21,8 @@ body:json {
 vars:post-response {
   subscriptionId: res.body.subscriptionId
 }
+
+assert {
+  res.status: eq 200
+  res.body.subscriptionId: isDefined
+}
