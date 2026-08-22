@@ -1,0 +1,14 @@
+{
+  "name": "distributed-horcruxes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BPMN model linting for the distributed-transactions examples",
+  "scripts": {
+    "lint:bpmn": "bpmnlint --max-warnings=0 'configuration/**/*.bpmn'"
+  },
+  "devDependencies": {
+    "@miragon/bpmnlint-plugin-rules": "0.9.0",
+    "bpmnlint": "11.13.0",
+    "zeebe-bpmn-moddle": "1.18.0"
+  }
+}

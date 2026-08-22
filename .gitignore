@@ -38,3 +38,6 @@ replay_pid*
 .idea/
 .DS_Store
 .claude/logs/
+
+# Node
+node_modules/
