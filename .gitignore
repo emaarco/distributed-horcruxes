@@ -6,6 +6,7 @@
 
 # Build
 build/
+bin/
 
 # Log file
 *.log

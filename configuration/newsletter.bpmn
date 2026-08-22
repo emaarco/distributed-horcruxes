@@ -105,6 +105,16 @@
           <dc:Bounds x="134" y="385" width="88" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="serviceTask_abortRegistration_di" bpmnElement="serviceTask_abortRegistration">
+        <dc:Bounds x="490" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEvent_registrationAborted_di" bpmnElement="endEvent_registrationAborted">
+        <dc:Bounds x="682" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="671" y="145" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="subProcess_confirmation_di" bpmnElement="subProcess_confirmation" isExpanded="true">
         <dc:Bounds x="260" y="240" width="640" height="240" />
         <bpmndi:BPMNLabel />
@@ -138,36 +148,6 @@
           <dc:Bounds x="722" y="419" width="29" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="serviceTask_sendWelcomeMail_di" bpmnElement="serviceTask_sendWelcomeMail">
-        <dc:Bounds x="960" y="320" width="100" height="80" />
-        <bpmndi:BPMNLabel />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="endEvent_registrationCompleted_di" bpmnElement="endEvent_registrationCompleted">
-        <dc:Bounds x="1120" y="342" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1109" y="385" width="59" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="event_after3Days_di" bpmnElement="event_after3Days">
-        <dc:Bounds x="500" y="222" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="536" y="196" width="33" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="serviceTask_abortRegistration_di" bpmnElement="serviceTask_abortRegistration">
-        <dc:Bounds x="620" y="80" width="100" height="80" />
-        <bpmndi:BPMNLabel />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="endEvent_registrationAborted_di" bpmnElement="endEvent_registrationAborted">
-        <dc:Bounds x="780" y="102" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="769" y="145" width="59" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="flow_submitToConfirmation_di" bpmnElement="flow_submitToConfirmation">
-        <di:waypoint x="196" y="360" />
-        <di:waypoint x="260" y="360" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow_requestToMerge_di" bpmnElement="flow_requestToMerge">
         <di:waypoint x="336" y="360" />
         <di:waypoint x="390" y="360" />
@@ -180,32 +160,52 @@
         <di:waypoint x="600" y="360" />
         <di:waypoint x="660" y="360" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="flow_confirmToConfirmed_di" bpmnElement="flow_confirmToConfirmed">
-        <di:waypoint x="760" y="360" />
-        <di:waypoint x="820" y="360" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow_everyDayToMerge_di" bpmnElement="flow_everyDayToMerge">
         <di:waypoint x="710" y="418" />
         <di:waypoint x="710" y="440" />
         <di:waypoint x="415" y="440" />
         <di:waypoint x="415" y="385" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_confirmToConfirmed_di" bpmnElement="flow_confirmToConfirmed">
+        <di:waypoint x="760" y="360" />
+        <di:waypoint x="820" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="serviceTask_sendWelcomeMail_di" bpmnElement="serviceTask_sendWelcomeMail">
+        <dc:Bounds x="960" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEvent_registrationCompleted_di" bpmnElement="endEvent_registrationCompleted">
+        <dc:Bounds x="1120" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1109" y="385" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="event_after3Days_di" bpmnElement="event_after3Days">
+        <dc:Bounds x="397" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="433" y="196" width="33" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_submitToConfirmation_di" bpmnElement="flow_submitToConfirmation">
+        <di:waypoint x="196" y="360" />
+        <di:waypoint x="260" y="360" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow_confirmationToWelcomeMail_di" bpmnElement="flow_confirmationToWelcomeMail">
         <di:waypoint x="900" y="360" />
         <di:waypoint x="960" y="360" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_after3DaysToAbort_di" bpmnElement="flow_after3DaysToAbort">
+        <di:waypoint x="415" y="222" />
+        <di:waypoint x="415" y="120" />
+        <di:waypoint x="490" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_abortToAborted_di" bpmnElement="flow_abortToAborted">
+        <di:waypoint x="590" y="120" />
+        <di:waypoint x="682" y="120" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow_welcomeMailToCompleted_di" bpmnElement="flow_welcomeMailToCompleted">
         <di:waypoint x="1060" y="360" />
         <di:waypoint x="1120" y="360" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="flow_after3DaysToAbort_di" bpmnElement="flow_after3DaysToAbort">
-        <di:waypoint x="518" y="222" />
-        <di:waypoint x="518" y="120" />
-        <di:waypoint x="620" y="120" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="flow_abortToAborted_di" bpmnElement="flow_abortToAborted">
-        <di:waypoint x="720" y="120" />
-        <di:waypoint x="780" y="120" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
