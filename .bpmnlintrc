@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "bpmnlint:recommended",
+    "plugin:camunda-compat/camunda-cloud-8-10",
+    "plugin:@miragon/rules/recommended-for-automation"
+  ],
+  "moddleExtensions": {
+    "zeebe": "zeebe-bpmn-moddle/resources/zeebe.json"
+  }
+}

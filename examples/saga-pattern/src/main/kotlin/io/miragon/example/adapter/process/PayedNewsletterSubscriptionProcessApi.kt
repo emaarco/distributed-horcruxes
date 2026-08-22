@@ -107,47 +107,48 @@ object PayedNewsletterSubscriptionProcessApi {
    * Worker code typically does not need these.
    */
   object Flows {
-    val FLOW_0_MD_8_PXO: BpmnFlow = BpmnFlow(
-          id = "Flow_0md8pxo",
-          sourceRef = "startEvent_submitForm",
-          targetRef = "serviceTask_reserveSpot",
-        )
-
-    val FLOW_1_BCCPVR: BpmnFlow = BpmnFlow(
-          id = "Flow_1bccpvr",
-          sourceRef = "serviceTask_processPayment",
-          targetRef = "gateway_paymentSuccessful",
-        )
-
-    val FLOW_1_GAHADA: BpmnFlow = BpmnFlow(
-          id = "Flow_1gahada",
+    val FLOW_PAYMENT_FAILED: BpmnFlow = BpmnFlow(
+          id = "flow_paymentFailed",
+          name = "No",
           sourceRef = "gateway_paymentSuccessful",
           targetRef = "endEvent_paymentFailed",
           condition = "=paymentSuccessful = false",
         )
 
-    val FLOW_1_LXG_97_J: BpmnFlow = BpmnFlow(
-          id = "Flow_1lxg97j",
+    val FLOW_PAYMENT_SUCCEEDED: BpmnFlow = BpmnFlow(
+          id = "flow_paymentSucceeded",
           sourceRef = "gateway_paymentSuccessful",
           targetRef = "serviceTask_sendWelcomeMail",
           isDefault = true,
         )
 
-    val FLOW_1_PM_19_TY: BpmnFlow = BpmnFlow(
-          id = "Flow_1pm19ty",
+    val FLOW_PAYMENT_TO_GATEWAY: BpmnFlow = BpmnFlow(
+          id = "flow_paymentToGateway",
+          sourceRef = "serviceTask_processPayment",
+          targetRef = "gateway_paymentSuccessful",
+        )
+
+    val FLOW_RESERVE_SPOT_TO_PAYMENT: BpmnFlow = BpmnFlow(
+          id = "flow_reserveSpotToPayment",
           sourceRef = "serviceTask_reserveSpot",
           targetRef = "serviceTask_processPayment",
         )
 
-    val FLOW_1_W_1_JP_6_Q: BpmnFlow = BpmnFlow(
-          id = "Flow_1w1jp6q",
+    val FLOW_SUBMIT_TO_RESERVE_SPOT: BpmnFlow = BpmnFlow(
+          id = "flow_submitToReserveSpot",
+          sourceRef = "startEvent_submitForm",
+          targetRef = "serviceTask_reserveSpot",
+        )
+
+    val FLOW_WELCOME_MAIL_TO_COMPLETED: BpmnFlow = BpmnFlow(
+          id = "flow_welcomeMailToCompleted",
           sourceRef = "serviceTask_sendWelcomeMail",
           targetRef = "endEvent_registrationCompleted",
         )
   }
 
   /**
-   * Per-element graph metadata (previousElements / followingElements / parentId / boundary attachments).
+   * Per-element graph metadata (elementType / previousElements / followingElements / parentId / boundary attachments).
    * Intended for tooling and tests, not worker runtime code.
    */
   object Relations {
@@ -158,6 +159,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "COMPENSATION_END_EVENT",
         )
 
     val END_EVENT_REGISTRATION_COMPLETED: BpmnRelations = BpmnRelations(
@@ -167,6 +169,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "END_EVENT",
         )
 
     val EVENT_PAYMENT_FAILED: BpmnRelations = BpmnRelations(
@@ -176,6 +179,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = "serviceTask_reserveSpot",
           attachedElements = emptyList(),
+          elementType = "COMPENSATION_BOUNDARY_EVENT",
         )
 
     val GATEWAY_PAYMENT_SUCCESSFUL: BpmnRelations = BpmnRelations(
@@ -185,6 +189,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "EXCLUSIVE_GATEWAY",
         )
 
     val SERVICE_TASK_CANCEL_RESERVATION: BpmnRelations = BpmnRelations(
@@ -194,6 +199,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
         )
 
     val SERVICE_TASK_PROCESS_PAYMENT: BpmnRelations = BpmnRelations(
@@ -203,6 +209,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
         )
 
     val SERVICE_TASK_RESERVE_SPOT: BpmnRelations = BpmnRelations(
@@ -212,6 +219,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = listOf("event_paymentFailed"),
+          elementType = "SERVICE_TASK",
         )
 
     val SERVICE_TASK_SEND_WELCOME_MAIL: BpmnRelations = BpmnRelations(
@@ -221,6 +229,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
         )
 
     val START_EVENT_SUBMIT_FORM: BpmnRelations = BpmnRelations(
@@ -230,6 +239,7 @@ object PayedNewsletterSubscriptionProcessApi {
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "MESSAGE_START_EVENT",
         )
   }
 }

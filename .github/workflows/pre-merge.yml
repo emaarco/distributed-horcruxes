@@ -28,3 +28,27 @@ jobs:
       # Step 4: Run Gradle build
       - name: Run Gradle Build
         run: ./gradlew build
+
+  lint-bpmn:
+    name: Lint BPMN Models
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: npm ci
+
+      # Step 4: Lint BPMN models (fail on warnings)
+      - name: Run bpmnlint
+        run: npm run lint:bpmn

@@ -25,33 +25,37 @@ object NewsletterSubscriptionProcessApi {
    * Worker runtime code rarely needs these.
    */
   object Elements {
-    val ACTIVITY_ABORT_REGISTRATION: ElementId = ElementId("Activity_AbortRegistration")
-
-    val ACTIVITY_CONFIRM_REGISTRATION: ElementId = ElementId("Activity_ConfirmRegistration")
-
-    val ACTIVITY_SEND_CONFIRMATION_MAIL: ElementId =
-        ElementId("Activity_SendConfirmationMail")
-
-    val ACTIVITY_SEND_WELCOME_MAIL: ElementId = ElementId("Activity_SendWelcomeMail")
-
-    val END_EVENT_REGISTRATION_ABORTED: ElementId = ElementId("EndEvent_RegistrationAborted")
+    val END_EVENT_REGISTRATION_ABORTED: ElementId = ElementId("endEvent_registrationAborted")
 
     val END_EVENT_REGISTRATION_COMPLETED: ElementId =
-        ElementId("EndEvent_RegistrationCompleted")
+        ElementId("endEvent_registrationCompleted")
 
     val END_EVENT_SUBSCRIPTION_CONFIRMED: ElementId =
-        ElementId("EndEvent_SubscriptionConfirmed")
+        ElementId("endEvent_subscriptionConfirmed")
 
-    val START_EVENT_REQUEST_RECEIVED: ElementId = ElementId("StartEvent_RequestReceived")
+    val EVENT_AFTER_3_DAYS: ElementId = ElementId("event_after3Days")
+
+    val EVENT_EVERY_DAY: ElementId = ElementId("event_everyDay")
+
+    val GATEWAY_RESEND_REMINDER: ElementId = ElementId("gateway_resendReminder")
+
+    val RECEIVE_TASK_CONFIRM_REGISTRATION: ElementId =
+        ElementId("receiveTask_confirmRegistration")
+
+    val SERVICE_TASK_ABORT_REGISTRATION: ElementId =
+        ElementId("serviceTask_abortRegistration")
+
+    val SERVICE_TASK_SEND_CONFIRMATION_MAIL: ElementId =
+        ElementId("serviceTask_sendConfirmationMail")
+
+    val SERVICE_TASK_SEND_WELCOME_MAIL: ElementId = ElementId("serviceTask_sendWelcomeMail")
+
+    val START_EVENT_REQUEST_RECEIVED: ElementId = ElementId("startEvent_requestReceived")
 
     val START_EVENT_SUBMIT_REGISTRATION_FORM: ElementId =
-        ElementId("StartEvent_SubmitRegistrationForm")
+        ElementId("startEvent_submitRegistrationForm")
 
-    val SUB_PROCESS_CONFIRMATION: ElementId = ElementId("SubProcess_Confirmation")
-
-    val TIMER_AFTER_3_DAYS: ElementId = ElementId("Timer_After3Days")
-
-    val TIMER_EVERY_DAY: ElementId = ElementId("Timer_EveryDay")
+    val SUB_PROCESS_CONFIRMATION: ElementId = ElementId("subProcess_confirmation")
   }
 
   /**
@@ -79,9 +83,9 @@ object NewsletterSubscriptionProcessApi {
   }
 
   object Timers {
-    val TIMER_AFTER_3_DAYS: BpmnTimer = BpmnTimer("Duration", "PT2M30S")
+    val EVENT_AFTER_3_DAYS: BpmnTimer = BpmnTimer("Duration", "PT2M30S")
 
-    val TIMER_EVERY_DAY: BpmnTimer = BpmnTimer("Duration", "PT1M")
+    val EVENT_EVERY_DAY: BpmnTimer = BpmnTimer("Duration", "PT1M")
   }
 
   /**
@@ -109,172 +113,199 @@ object NewsletterSubscriptionProcessApi {
    * Worker code typically does not need these.
    */
   object Flows {
-    val FLOW_05_I_3_X_1_Y: BpmnFlow = BpmnFlow(
-          id = "Flow_05i3x1y",
-          sourceRef = "StartEvent_RequestReceived",
-          targetRef = "Activity_SendConfirmationMail",
+    val FLOW_ABORT_TO_ABORTED: BpmnFlow = BpmnFlow(
+          id = "flow_abortToAborted",
+          sourceRef = "serviceTask_abortRegistration",
+          targetRef = "endEvent_registrationAborted",
         )
 
-    val FLOW_09_CUVZP: BpmnFlow = BpmnFlow(
-          id = "Flow_09cuvzp",
-          sourceRef = "SubProcess_Confirmation",
-          targetRef = "Activity_SendWelcomeMail",
+    val FLOW_AFTER_3_DAYS_TO_ABORT: BpmnFlow = BpmnFlow(
+          id = "flow_after3DaysToAbort",
+          sourceRef = "event_after3Days",
+          targetRef = "serviceTask_abortRegistration",
         )
 
-    val FLOW_0_X_4_EWVB: BpmnFlow = BpmnFlow(
-          id = "Flow_0x4ewvb",
-          sourceRef = "Timer_EveryDay",
-          targetRef = "Activity_SendConfirmationMail",
+    val FLOW_CONFIRM_TO_CONFIRMED: BpmnFlow = BpmnFlow(
+          id = "flow_confirmToConfirmed",
+          sourceRef = "receiveTask_confirmRegistration",
+          targetRef = "endEvent_subscriptionConfirmed",
         )
 
-    val FLOW_1_BCKM_43: BpmnFlow = BpmnFlow(
-          id = "Flow_1bckm43",
-          sourceRef = "Activity_SendConfirmationMail",
-          targetRef = "Activity_ConfirmRegistration",
+    val FLOW_CONFIRMATION_MAIL_TO_CONFIRM: BpmnFlow = BpmnFlow(
+          id = "flow_confirmationMailToConfirm",
+          sourceRef = "serviceTask_sendConfirmationMail",
+          targetRef = "receiveTask_confirmRegistration",
         )
 
-    val FLOW_1_BSB_8_NO: BpmnFlow = BpmnFlow(
-          id = "Flow_1bsb8no",
-          sourceRef = "Activity_AbortRegistration",
-          targetRef = "EndEvent_RegistrationAborted",
+    val FLOW_CONFIRMATION_TO_WELCOME_MAIL: BpmnFlow = BpmnFlow(
+          id = "flow_confirmationToWelcomeMail",
+          sourceRef = "subProcess_confirmation",
+          targetRef = "serviceTask_sendWelcomeMail",
         )
 
-    val FLOW_1_CPWE_57: BpmnFlow = BpmnFlow(
-          id = "Flow_1cpwe57",
-          sourceRef = "Activity_ConfirmRegistration",
-          targetRef = "EndEvent_SubscriptionConfirmed",
+    val FLOW_EVERY_DAY_TO_MERGE: BpmnFlow = BpmnFlow(
+          id = "flow_everyDayToMerge",
+          sourceRef = "event_everyDay",
+          targetRef = "gateway_resendReminder",
         )
 
-    val FLOW_1_CSFYYZ: BpmnFlow = BpmnFlow(
-          id = "Flow_1csfyyz",
-          sourceRef = "StartEvent_SubmitRegistrationForm",
-          targetRef = "SubProcess_Confirmation",
+    val FLOW_MERGE_TO_CONFIRMATION_MAIL: BpmnFlow = BpmnFlow(
+          id = "flow_mergeToConfirmationMail",
+          sourceRef = "gateway_resendReminder",
+          targetRef = "serviceTask_sendConfirmationMail",
         )
 
-    val FLOW_1_I_7_HJID: BpmnFlow = BpmnFlow(
-          id = "Flow_1i7hjid",
-          sourceRef = "Activity_SendWelcomeMail",
-          targetRef = "EndEvent_RegistrationCompleted",
+    val FLOW_REQUEST_TO_MERGE: BpmnFlow = BpmnFlow(
+          id = "flow_requestToMerge",
+          sourceRef = "startEvent_requestReceived",
+          targetRef = "gateway_resendReminder",
         )
 
-    val FLOW_1_L_1_LJ_4_M: BpmnFlow = BpmnFlow(
-          id = "Flow_1l1lj4m",
-          sourceRef = "Timer_After3Days",
-          targetRef = "Activity_AbortRegistration",
+    val FLOW_SUBMIT_TO_CONFIRMATION: BpmnFlow = BpmnFlow(
+          id = "flow_submitToConfirmation",
+          sourceRef = "startEvent_submitRegistrationForm",
+          targetRef = "subProcess_confirmation",
+        )
+
+    val FLOW_WELCOME_MAIL_TO_COMPLETED: BpmnFlow = BpmnFlow(
+          id = "flow_welcomeMailToCompleted",
+          sourceRef = "serviceTask_sendWelcomeMail",
+          targetRef = "endEvent_registrationCompleted",
         )
   }
 
   /**
-   * Per-element graph metadata (previousElements / followingElements / parentId / boundary attachments).
+   * Per-element graph metadata (elementType / previousElements / followingElements / parentId / boundary attachments).
    * Intended for tooling and tests, not worker runtime code.
    */
   object Relations {
-    val ACTIVITY_ABORT_REGISTRATION: BpmnRelations = BpmnRelations(
-          name = "Abort registration",
-          previousElements = listOf("Timer_After3Days"),
-          followingElements = listOf("EndEvent_RegistrationAborted"),
-          parentId = null,
-          attachedToRef = null,
-          attachedElements = emptyList(),
-        )
-
-    val ACTIVITY_CONFIRM_REGISTRATION: BpmnRelations = BpmnRelations(
-          name = "Confirm subscription",
-          previousElements = listOf("Activity_SendConfirmationMail"),
-          followingElements = listOf("EndEvent_SubscriptionConfirmed"),
-          parentId = "SubProcess_Confirmation",
-          attachedToRef = null,
-          attachedElements = listOf("Timer_EveryDay"),
-        )
-
-    val ACTIVITY_SEND_CONFIRMATION_MAIL: BpmnRelations = BpmnRelations(
-          name = "Send confirmation mail",
-          previousElements = listOf("StartEvent_RequestReceived", "Timer_EveryDay"),
-          followingElements = listOf("Activity_ConfirmRegistration"),
-          parentId = "SubProcess_Confirmation",
-          attachedToRef = null,
-          attachedElements = emptyList(),
-        )
-
-    val ACTIVITY_SEND_WELCOME_MAIL: BpmnRelations = BpmnRelations(
-          name = "Send Welcome-Mail",
-          previousElements = listOf("SubProcess_Confirmation"),
-          followingElements = listOf("EndEvent_RegistrationCompleted"),
-          parentId = null,
-          attachedToRef = null,
-          attachedElements = emptyList(),
-        )
-
     val END_EVENT_REGISTRATION_ABORTED: BpmnRelations = BpmnRelations(
           name = "Registration aborted",
-          previousElements = listOf("Activity_AbortRegistration"),
+          previousElements = listOf("serviceTask_abortRegistration"),
           followingElements = emptyList(),
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "END_EVENT",
         )
 
     val END_EVENT_REGISTRATION_COMPLETED: BpmnRelations = BpmnRelations(
           name = "Registration completed",
-          previousElements = listOf("Activity_SendWelcomeMail"),
+          previousElements = listOf("serviceTask_sendWelcomeMail"),
           followingElements = emptyList(),
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "MESSAGE_END_EVENT",
         )
 
     val END_EVENT_SUBSCRIPTION_CONFIRMED: BpmnRelations = BpmnRelations(
           name = "Subscription confirmed",
-          previousElements = listOf("Activity_ConfirmRegistration"),
+          previousElements = listOf("receiveTask_confirmRegistration"),
           followingElements = emptyList(),
-          parentId = "SubProcess_Confirmation",
+          parentId = "subProcess_confirmation",
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "END_EVENT",
+        )
+
+    val EVENT_AFTER_3_DAYS: BpmnRelations = BpmnRelations(
+          name = "After 3 days",
+          previousElements = emptyList(),
+          followingElements = listOf("serviceTask_abortRegistration"),
+          parentId = null,
+          attachedToRef = "subProcess_confirmation",
+          attachedElements = emptyList(),
+          elementType = "TIMER_BOUNDARY_EVENT",
+        )
+
+    val EVENT_EVERY_DAY: BpmnRelations = BpmnRelations(
+          name = "Every day",
+          previousElements = emptyList(),
+          followingElements = listOf("gateway_resendReminder"),
+          parentId = "subProcess_confirmation",
+          attachedToRef = "receiveTask_confirmRegistration",
+          attachedElements = emptyList(),
+          elementType = "TIMER_BOUNDARY_EVENT",
+        )
+
+    val GATEWAY_RESEND_REMINDER: BpmnRelations = BpmnRelations(
+          previousElements = listOf("startEvent_requestReceived", "event_everyDay"),
+          followingElements = listOf("serviceTask_sendConfirmationMail"),
+          parentId = "subProcess_confirmation",
+          attachedToRef = null,
+          attachedElements = emptyList(),
+          elementType = "EXCLUSIVE_GATEWAY",
+        )
+
+    val RECEIVE_TASK_CONFIRM_REGISTRATION: BpmnRelations = BpmnRelations(
+          name = "Confirm subscription",
+          previousElements = listOf("serviceTask_sendConfirmationMail"),
+          followingElements = listOf("endEvent_subscriptionConfirmed"),
+          parentId = "subProcess_confirmation",
+          attachedToRef = null,
+          attachedElements = listOf("event_everyDay"),
+          elementType = "RECEIVE_TASK",
+        )
+
+    val SERVICE_TASK_ABORT_REGISTRATION: BpmnRelations = BpmnRelations(
+          name = "Abort registration",
+          previousElements = listOf("event_after3Days"),
+          followingElements = listOf("endEvent_registrationAborted"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
+        )
+
+    val SERVICE_TASK_SEND_CONFIRMATION_MAIL: BpmnRelations = BpmnRelations(
+          name = "Send confirmation mail",
+          previousElements = listOf("gateway_resendReminder"),
+          followingElements = listOf("receiveTask_confirmRegistration"),
+          parentId = "subProcess_confirmation",
+          attachedToRef = null,
+          attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
+        )
+
+    val SERVICE_TASK_SEND_WELCOME_MAIL: BpmnRelations = BpmnRelations(
+          name = "Send Welcome-Mail",
+          previousElements = listOf("subProcess_confirmation"),
+          followingElements = listOf("endEvent_registrationCompleted"),
+          parentId = null,
+          attachedToRef = null,
+          attachedElements = emptyList(),
+          elementType = "SERVICE_TASK",
         )
 
     val START_EVENT_REQUEST_RECEIVED: BpmnRelations = BpmnRelations(
           name = "Subscription requested",
           previousElements = emptyList(),
-          followingElements = listOf("Activity_SendConfirmationMail"),
-          parentId = "SubProcess_Confirmation",
+          followingElements = listOf("gateway_resendReminder"),
+          parentId = "subProcess_confirmation",
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "START_EVENT",
         )
 
     val START_EVENT_SUBMIT_REGISTRATION_FORM: BpmnRelations = BpmnRelations(
           name = "Submit newsletter form",
           previousElements = emptyList(),
-          followingElements = listOf("SubProcess_Confirmation"),
+          followingElements = listOf("subProcess_confirmation"),
           parentId = null,
           attachedToRef = null,
           attachedElements = emptyList(),
+          elementType = "MESSAGE_START_EVENT",
         )
 
     val SUB_PROCESS_CONFIRMATION: BpmnRelations = BpmnRelations(
           name = "Subscription Confirmation",
-          previousElements = listOf("StartEvent_SubmitRegistrationForm"),
-          followingElements = listOf("Activity_SendWelcomeMail"),
+          previousElements = listOf("startEvent_submitRegistrationForm"),
+          followingElements = listOf("serviceTask_sendWelcomeMail"),
           parentId = null,
           attachedToRef = null,
-          attachedElements = listOf("Timer_After3Days"),
-        )
-
-    val TIMER_AFTER_3_DAYS: BpmnRelations = BpmnRelations(
-          name = "After 3 days",
-          previousElements = emptyList(),
-          followingElements = listOf("Activity_AbortRegistration"),
-          parentId = null,
-          attachedToRef = "SubProcess_Confirmation",
-          attachedElements = emptyList(),
-        )
-
-    val TIMER_EVERY_DAY: BpmnRelations = BpmnRelations(
-          name = "Every day",
-          previousElements = emptyList(),
-          followingElements = listOf("Activity_SendConfirmationMail"),
-          parentId = "SubProcess_Confirmation",
-          attachedToRef = "Activity_ConfirmRegistration",
-          attachedElements = emptyList(),
+          attachedElements = listOf("event_after3Days"),
+          elementType = "SUB_PROCESS",
         )
   }
 }
