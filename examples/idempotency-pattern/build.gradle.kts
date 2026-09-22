@@ -25,17 +25,9 @@ dependencies {
     testImplementation(libs.bundles.test)
 }
 
-sourceSets {
-    main {
-        resources {
-            srcDirs("../../configuration")
-        }
-    }
-}
-
 tasks.named<GenerateBpmnModelsTask>("generateBpmnModelApi") {
-    baseDir = "${projectDir}/../../configuration"
-    filePattern = "newsletter.bpmn"
+    baseDir = "$projectDir/src/main/resources"
+    filePattern = "inner-circle-membership.bpmn"
     outputFolderPath = "$projectDir/src/main/kotlin"
     packagePath = "io.miragon.example.adapter.process"
     outputLanguage = OutputLanguage.KOTLIN

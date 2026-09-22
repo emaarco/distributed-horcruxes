@@ -4,7 +4,7 @@
   "private": true,
   "description": "BPMN model linting for the distributed-transactions examples",
   "scripts": {
-    "lint:bpmn": "bpmnlint --max-warnings=0 'configuration/**/*.bpmn'"
+    "lint:bpmn": "bpmnlint --max-warnings=0 'examples/**/src/main/resources/*.bpmn'"
   },
   "devDependencies": {
     "@miragon/bpmnlint-plugin-rules": "0.9.0",

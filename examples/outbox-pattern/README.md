@@ -34,45 +34,41 @@ The outbox pattern consists of two main components:
 
 ### **Storing Messages in the Outbox**
 
-The `ProcessMessagePersistenceAdapter` stores messages in the outbox table during the transaction:
+The `ProcessMessagePersistenceAdapter` implements the `MembershipProcess` port and stores the messages
+`miravelo.registrationSubmitted`, `miravelo.membershipConfirmed` and `miravelo.confirmationRejected` in the outbox table
+during the transaction:
 
 ```kotlin
 @Component
 class ProcessMessagePersistenceAdapter(
     private val repository: ProcessMessageJpaRepository,
-) : NewsletterSubscriptionProcess {
+) : MembershipProcess {
 
     private val objectMapper = ObjectMapper()
 
-    override fun submitForm(id: SubscriptionId) {
-        val variables = mapOf("subscriptionId" to id.value.toString())
-        val processMessage = toProcessMessage(
-            Message_FormSubmitted,
-            id.value.toString(),
-            variables
-        )
+    override fun submitRegistration(id: MembershipId) {
+        val processMessage = toProcessMessage(MIRAVELO_REGISTRATION_SUBMITTED.value, id)
         repository.save(processMessage)
     }
 
-    override fun confirmSubscription(id: SubscriptionId) {
-        val variables = mapOf("subscriptionId" to id.value.toString())
-        val processMessage = toProcessMessage(
-            Message_SubscriptionConfirmed,
-            id.value.toString(),
-            variables
-        )
+    override fun confirmMembership(id: MembershipId) {
+        val processMessage = toProcessMessage(MIRAVELO_MEMBERSHIP_CONFIRMED.value, id)
         repository.save(processMessage)
     }
 
-    private fun toProcessMessage(
-        messageName: String,
-        correlationId: String?,
-        variables: Map<String, Any>,
-    ) = ProcessMessageEntity(
-        messageName = messageName,
-        correlationId = correlationId,
-        variables = objectMapper.writeValueAsString(variables),
-    )
+    override fun rejectConfirmation(id: MembershipId) {
+        val processMessage = toProcessMessage(MIRAVELO_CONFIRMATION_REJECTED.value, id)
+        repository.save(processMessage)
+    }
+
+    private fun toProcessMessage(messageName: String, id: MembershipId): ProcessMessageEntity {
+        val variables = mapOf("membershipId" to id.value.toString())
+        return ProcessMessageEntity(
+            messageName = messageName,
+            correlationId = id.value.toString(),
+            variables = objectMapper.writeValueAsString(variables),
+        )
+    }
 }
 ```
 
@@ -80,7 +76,7 @@ Here:
 
 - **`ProcessMessageEntity`** represents the outbox table entry, which includes:
     - `messageName`: The name of the message to be sent to Zeebe.
-    - `correlationId`: An optional correlation key for Zeebe.
+    - `correlationId`: The `membershipId` used as correlation key for Zeebe.
     - `variables`: Process variables serialized as JSON.
     - `status`: Current message status (PENDING or SENT).
     - `retryCount`: Number of send attempts (for retry tracking).

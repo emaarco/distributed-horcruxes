@@ -1,0 +1,34 @@
+meta {
+  name: The membership is activated
+  type: http
+  seq: 4
+  tags: [
+    pattern
+  ]
+}
+
+post {
+  url: {{camundaRest}}/element-instances/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "filter": {
+      "processInstanceKey": "{{processInstanceKey}}",
+      "elementId": "endEvent_membershipActivated",
+      "state": "COMPLETED"
+    }
+  }
+}
+
+script:pre-request {
+  await awaitElement(bru.getVar("processInstanceKey"), "endEvent_membershipActivated", "COMPLETED");
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: length 1
+  res.body.items[0].elementId: eq endEvent_membershipActivated
+}

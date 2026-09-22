@@ -90,19 +90,26 @@ database transaction is committed.
 
 The solution uses a layered architecture to separate concerns:
 
-1. **NewsletterSubscriptionProcessAdapter** - Implements the port interface, delegates to ProcessEngineApi
+1. **MembershipProcessAdapter** - Implements the port interface, delegates to ProcessEngineApi
    ```kotlin
    @Component
-   class NewsletterSubscriptionProcessAdapter(
+   class MembershipProcessAdapter(
        private val engineApi: ProcessEngineApi
-   ) : NewsletterSubscriptionProcess {
+   ) : MembershipProcess {
 
-       override fun submitForm(id: SubscriptionId) {
-           val variables = mapOf("subscriptionId" to id.value.toString())
+       override fun submitRegistration(id: MembershipId) {
+           val variables = mapOf("membershipId" to id.value.toString())
            engineApi.startProcessViaMessage(
-               messageName = Message_FormSubmitted,
+               messageName = "miravelo.registrationSubmitted",
                correlationId = id.value.toString(),
                variables = variables
+           )
+       }
+
+       override fun confirmMembership(id: MembershipId) {
+           engineApi.sendMessage(
+               messageName = "miravelo.membershipConfirmed",
+               correlationId = id.value.toString()
            )
        }
    }

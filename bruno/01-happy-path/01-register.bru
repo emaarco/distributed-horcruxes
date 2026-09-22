@@ -1,0 +1,30 @@
+meta {
+  name: Register for the Inner Circle
+  type: http
+  seq: 1
+  tags: [
+    pattern
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/memberships/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "alice@example.com",
+    "name": "John Doe"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.membershipId: isDefined
+}
+
+vars:post-response {
+  membershipId: res.body.membershipId
+}

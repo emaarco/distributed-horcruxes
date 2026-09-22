@@ -1,0 +1,40 @@
+meta {
+  name: The process waits for the confirmation
+  type: http
+  seq: 2
+  tags: [
+    saga
+  ]
+}
+
+post {
+  url: {{camundaRest}}/process-instances/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "filter": {
+      "processDefinitionId": "{{processDefinitionId}}",
+      "variables": [
+        { "name": "membershipId", "value": "\"{{membershipId}}\"" }
+      ]
+    }
+  }
+}
+
+script:pre-request {
+  const instance = await pollSearch("/process-instances/search", instanceFilter(bru.getVar("membershipId")), hasItems);
+  const key = instance.data.items[0].processInstanceKey;
+  await awaitElement(key, "receiveTask_confirmMembership", "ACTIVE");
+}
+
+assert {
+  res.status: eq 200
+  res.body.items[0].processInstanceKey: isDefined
+}
+
+vars:post-response {
+  processInstanceKey: res.body.items[0].processInstanceKey
+}

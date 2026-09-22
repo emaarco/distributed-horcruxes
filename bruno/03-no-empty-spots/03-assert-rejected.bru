@@ -1,0 +1,37 @@
+meta {
+  name: The membership is rejected
+  type: http
+  seq: 3
+  tags: [
+    pattern
+  ]
+}
+
+post {
+  url: {{camundaRest}}/process-instances/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "filter": {
+      "processDefinitionId": "{{processDefinitionId}}",
+      "variables": [
+        { "name": "membershipId", "value": "\"{{membershipId}}\"" }
+      ]
+    }
+  }
+}
+
+script:pre-request {
+  const instance = await pollSearch("/process-instances/search", instanceFilter(bru.getVar("membershipId")), hasItems);
+  const key = instance.data.items[0].processInstanceKey;
+  await awaitElement(key, "endEvent_membershipRejected", "COMPLETED");
+  bru.setVar("processInstanceKey", key);
+}
+
+assert {
+  res.status: eq 200
+  res.body.items[0].state: eq COMPLETED
+}

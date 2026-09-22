@@ -1,8 +1,9 @@
 package io.miragon.example.adapter.out.db.message
 
-import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_FORM_SUBMITTED
-import io.miragon.example.adapter.process.NewsletterSubscriptionProcessApi.Messages.MESSAGE_SUBSCRIPTION_CONFIRMED
-import io.miragon.example.domain.SubscriptionId
+import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.domain.MembershipId
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -22,37 +23,54 @@ class ProcessMessagePersistenceAdapterTest {
     private val underTest = ProcessMessagePersistenceAdapter(repository)
 
     @Test
-    fun `should store a pending form-submitted message in the outbox`() {
+    fun `should store a pending registration-submitted message in the outbox`() {
         // Given
-        val subscriptionId = SubscriptionId(UUID.randomUUID())
+        val membershipId = MembershipId(UUID.randomUUID())
         val captured = slot<ProcessMessageEntity>()
         every { repository.save(capture(captured)) } answers { captured.captured }
 
         // When
-        underTest.submitForm(subscriptionId)
+        underTest.submitRegistration(membershipId)
 
         // Then
         verify(exactly = 1) { repository.save(any()) }
-        assertEquals(MESSAGE_FORM_SUBMITTED.value, captured.captured.messageName)
-        assertEquals(subscriptionId.value.toString(), captured.captured.correlationId)
+        assertEquals(MIRAVELO_REGISTRATION_SUBMITTED.value, captured.captured.messageName)
+        assertEquals(membershipId.value.toString(), captured.captured.correlationId)
         assertEquals(MessageStatus.PENDING, captured.captured.status)
-        assertTrue(captured.captured.variables.contains(subscriptionId.value.toString()))
+        assertTrue(captured.captured.variables.contains(membershipId.value.toString()))
     }
 
     @Test
-    fun `should store a pending subscription-confirmed message in the outbox`() {
+    fun `should store a pending membership-confirmed message in the outbox`() {
         // Given
-        val subscriptionId = SubscriptionId(UUID.randomUUID())
+        val membershipId = MembershipId(UUID.randomUUID())
         val captured = slot<ProcessMessageEntity>()
         every { repository.save(capture(captured)) } answers { captured.captured }
 
         // When
-        underTest.confirmSubscription(subscriptionId)
+        underTest.confirmMembership(membershipId)
 
         // Then
         verify(exactly = 1) { repository.save(any()) }
-        assertEquals(MESSAGE_SUBSCRIPTION_CONFIRMED.value, captured.captured.messageName)
-        assertEquals(subscriptionId.value.toString(), captured.captured.correlationId)
+        assertEquals(MIRAVELO_MEMBERSHIP_CONFIRMED.value, captured.captured.messageName)
+        assertEquals(membershipId.value.toString(), captured.captured.correlationId)
+        assertEquals(MessageStatus.PENDING, captured.captured.status)
+    }
+
+    @Test
+    fun `should store a pending confirmation-rejected message in the outbox`() {
+        // Given
+        val membershipId = MembershipId(UUID.randomUUID())
+        val captured = slot<ProcessMessageEntity>()
+        every { repository.save(capture(captured)) } answers { captured.captured }
+
+        // When
+        underTest.rejectConfirmation(membershipId)
+
+        // Then
+        verify(exactly = 1) { repository.save(any()) }
+        assertEquals(MIRAVELO_CONFIRMATION_REJECTED.value, captured.captured.messageName)
+        assertEquals(membershipId.value.toString(), captured.captured.correlationId)
         assertEquals(MessageStatus.PENDING, captured.captured.status)
     }
 }

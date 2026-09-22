@@ -1,0 +1,34 @@
+meta {
+  name: The claim is revoked by compensation
+  type: http
+  seq: 4
+  tags: [
+    saga
+  ]
+}
+
+post {
+  url: {{camundaRest}}/element-instances/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "filter": {
+      "processInstanceKey": "{{processInstanceKey}}",
+      "elementId": "serviceTask_revokeClaim",
+      "state": "COMPLETED"
+    }
+  }
+}
+
+script:pre-request {
+  await awaitElement(bru.getVar("processInstanceKey"), "serviceTask_revokeClaim", "COMPLETED");
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: length 1
+  res.body.items[0].elementId: eq serviceTask_revokeClaim
+}

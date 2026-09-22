@@ -1,0 +1,33 @@
+meta {
+  name: Fill the remaining spots of the Inner Circle
+  type: http
+  seq: 1
+  tags: [
+    pattern
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/memberships/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "filler@example.com",
+    "name": "Filler Member"
+  }
+}
+
+script:pre-request {
+  const totalSpots = 5;
+  for (let i = 0; i < totalSpots; i++) {
+    const res = await registerMembership(`filler-${i}@example.com`);
+    if (res.status !== 200) throw new Error(`Filling spot ${i} failed with status ${res.status}`);
+  }
+}
+
+assert {
+  res.status: eq 200
+}

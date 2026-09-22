@@ -1,7 +1,7 @@
 package io.miragon.example.application.port.`in`
 
-import io.miragon.example.domain.SubscriptionId
+import io.miragon.example.domain.MembershipId
 
 interface SendWelcomeMailUseCase {
-    fun sendWelcomeMail(subscriptionId: SubscriptionId)
+    fun sendWelcomeMail(membershipId: MembershipId)
 }

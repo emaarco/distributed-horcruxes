@@ -1,61 +1,49 @@
 package io.miragon.example.application.service
 
-import io.miragon.example.application.port.out.NewsletterSubscriptionRepository
+import io.miragon.example.application.port.out.MembershipRepository
 import io.miragon.example.application.port.out.ProcessedOperationRepository
 import io.miragon.example.domain.*
 import io.mockk.*
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 import java.util.*
 
-/**
- * Unit test for SendWelcomeMailService in idempotency-pattern.
- * Tests idempotency check and welcome mail sending logic.
- */
 class SendWelcomeMailServiceTest {
 
-    private val repository = mockk<NewsletterSubscriptionRepository>()
+    private val repository = mockk<MembershipRepository>()
     private val processedOperationRepository = mockk<ProcessedOperationRepository>()
     private val underTest = SendWelcomeMailService(repository, IdempotentOperationExecutor(processedOperationRepository))
 
-    @Test
-    fun `should send welcome mail when operation is not processed yet`() {
-        // Given
-        val subscriptionId = SubscriptionId(UUID.randomUUID())
-        val operationId = OperationId("${subscriptionId.value}-Activity_SendWelcomeMail")
-        val subscription = NewsletterSubscription(
-            id = subscriptionId,
-            email = Email("test@example.com"),
-            name = Name("Test User"),
-            newsletter = NewsletterId(UUID.randomUUID()),
-            registrationDate = LocalDateTime.now(),
-            status = SubscriptionStatus.CONFIRMED
-        )
+    private val membership = Membership(
+        id = MembershipId(UUID.randomUUID()),
+        name = Name("Test User"),
+        email = Email("test@example.com")
+    )
+    private val operationId = OperationId("${membership.id.value}-serviceTask_sendWelcomeMail")
 
+    @Test
+    fun `should load membership and record operation when not processed yet`() {
+        // Given
         every { processedOperationRepository.existsById(operationId) } returns false
-        every { repository.find(subscriptionId) } returns subscription
+        every { repository.find(membership.id) } returns membership
         every { processedOperationRepository.save(operationId) } just Runs
 
         // When
-        underTest.sendWelcomeMail(subscriptionId, operationId)
+        underTest.sendWelcomeMail(membership.id, operationId)
 
         // Then
         verify(exactly = 1) { processedOperationRepository.existsById(operationId) }
-        verify(exactly = 1) { repository.find(subscriptionId) }
+        verify(exactly = 1) { repository.find(membership.id) }
         verify(exactly = 1) { processedOperationRepository.save(operationId) }
         confirmVerified(repository, processedOperationRepository)
     }
 
     @Test
-    fun `should skip sending welcome mail when operation is already processed`() {
+    fun `should skip when operation is already processed`() {
         // Given
-        val subscriptionId = SubscriptionId(UUID.randomUUID())
-        val operationId = OperationId("${subscriptionId.value}-Activity_SendWelcomeMail")
-
         every { processedOperationRepository.existsById(operationId) } returns true
 
         // When
-        underTest.sendWelcomeMail(subscriptionId, operationId)
+        underTest.sendWelcomeMail(membership.id, operationId)
 
         // Then
         verify(exactly = 1) { processedOperationRepository.existsById(operationId) }

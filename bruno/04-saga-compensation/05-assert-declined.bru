@@ -1,0 +1,34 @@
+meta {
+  name: The membership is declined
+  type: http
+  seq: 5
+  tags: [
+    saga
+  ]
+}
+
+post {
+  url: {{camundaRest}}/element-instances/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "filter": {
+      "processInstanceKey": "{{processInstanceKey}}",
+      "elementId": "endEvent_membershipDeclined",
+      "state": "COMPLETED"
+    }
+  }
+}
+
+script:pre-request {
+  await awaitElement(bru.getVar("processInstanceKey"), "endEvent_membershipDeclined", "COMPLETED");
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: length 1
+  res.body.items[0].elementId: eq endEvent_membershipDeclined
+}

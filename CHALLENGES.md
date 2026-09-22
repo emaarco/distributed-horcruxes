@@ -16,33 +16,33 @@ the failure modes tangible.
 
 ## 🎮 When Production Breaks: A Concrete Symptom
 
-Imagine a newsletter platform whose subscription flow has run smoothly for months. Then support tickets start piling up:
-_"I signed up but never received a confirmation email."_ When you investigate, you find a contradictory pattern—**there
-is no subscription in the database**, yet **there is a running process instance** in the engine, stuck on an incident
-that always reads the same: `NoSuchElementException`. The task that should send the confirmation email cannot find the
-subscription it was told to work on.
+Imagine a membership platform whose registration flow has run smoothly for months. Then support tickets start piling
+up: _"I registered but never received a confirmation email."_ When you investigate, you find a contradictory
+pattern—**there is no membership in the database**, yet **there is a running process instance** in the engine, stuck on
+an incident that always reads the same: `NoSuchElementException`. The task that should claim the member's spot cannot
+find the membership it was told to work on.
 
-The code looks correct. It saves the subscription and notifies the engine inside a single `@Transactional` method:
+The code looks correct. It saves the membership and notifies the engine inside a single `@Transactional` method:
 
 ```kotlin
 @Service
 @Transactional
-class SubscribeToNewsletterService(
-    private val repository: NewsletterSubscriptionRepository,
-    private val processPort: NewsletterSubscriptionProcess
+class RegisterMembershipService(
+    private val repository: MembershipRepository,
+    private val processPort: MembershipProcess
 ) {
-    fun subscribe(command: SubscribeToNewsletterUseCase.Command): SubscriptionId {
-        val subscription = buildSubscription(command)
-        repository.save(subscription)        // local database
-        processPort.submitForm(subscription.id)  // remote engine
-        return subscription.id
+    fun register(command: RegisterMembershipUseCase.Command): MembershipId {
+        val membership = Membership(email = command.email, name = command.name)
+        repository.save(membership)                  // local database
+        processPort.submitRegistration(membership.id)  // remote engine
+        return membership.id
     }
 }
 ```
 
 The catch: `@Transactional` only controls the **local database** transaction. It has no power over the engine, which
 runs as a separate system. So if the message reaches the engine but the database commit then fails, only the database
-rolls back. The subscription disappears—but the process is already running, looking for data that no longer exists.
+rolls back. The membership disappears—but the process is already running, looking for data that no longer exists.
 
 This is the **distributed transaction problem**, and that incident is its signature in your logs.
 
@@ -53,7 +53,7 @@ To understand why this problem catches teams off guard, it helps to look at wher
 
 For years, business logic, database access, and often the process engine itself lived together in one application,
 writing to one database, protected by **one transaction per operation**. An embedded engine (e.g. Camunda 7 running as a
-library) shared that same transaction. Same transaction meant same fate: either the subscription **and** the process
+library) shared that same transaction. Same transaction meant same fate: either the membership **and** the process
 instance were saved, or neither was. This safety came from the **ACID** guarantees of a single database:
 
 - **Atomicity** — a transaction either succeeds completely or fails completely.
@@ -149,17 +149,17 @@ pattern that addresses it.
 | 5   | Job completion lost (connectivity)     | Acknowledging jobs  | Idempotency                           |
 | 6   | Job no longer available (cancellation) | Acknowledging jobs  | Process modeling, compensation/Saga   |
 
-### Example process: newsletter subscription
+### Example process: Inner Circle membership
 
 All examples use the same flow, implemented in a **hexagonal architecture** with transaction boundaries at the service
-layer:
+layer. The Inner Circle is a limited, exclusive newsletter:
 
-1. A user submits a subscription form.
-2. The service saves the subscription in the database.
-3. The service notifies the engine, which orchestrates tasks like sending a confirmation email and, after confirmation,
-   a welcome email.
+1. A user submits a registration form.
+2. The service saves the membership in the database.
+3. The service notifies the engine, which claims one of the limited spots, sends a confirmation email and, after
+   confirmation, a welcome email. Unconfirmed or rejected registrations are declined.
 
-![Newsletter Process](assets/newsletter.png)
+![Inner Circle Membership Process](assets/inner-circle-membership.png)
 
 ## 📤 Challenges When Sending Messages to the Engine
 
@@ -182,14 +182,14 @@ sequenceDiagram
     participant Service
     participant DB as Database
     participant Engine
-    User ->> Service: subscribe
-    Service ->> DB: insert subscription (uncommitted)
+    User ->> Service: register
+    Service ->> DB: insert membership (uncommitted)
     Service ->> Engine: start process
     Engine -->> Service: process started
     Service ->> DB: COMMIT ❌
-    DB ->> DB: rollback subscription
+    DB ->> DB: rollback membership
     DB -->> Service: commit failed
-    Note over DB, Engine: Subscription gone, but the process keeps running
+    Note over DB, Engine: Membership gone, but the process keeps running
 ```
 
 ### 2. Premature Execution: Reading Stale Data 🏃
@@ -198,7 +198,7 @@ sequenceDiagram
 commit completes—a timing race.
 
 **How it manifests**: The commit ultimately succeeds, but the engine assigns the first job before it does. The worker
-queries for the subscription and finds nothing yet. Unlike the phantom instance, the data _will_ exist shortly—but the
+queries for the membership and finds nothing yet. Unlike the phantom instance, the data _will_ exist shortly—but the
 worker reached it too early.
 
 > Addressed by **After-Transaction** and the **Outbox** pattern—both guarantee the message is sent only _after_ the
@@ -227,7 +227,7 @@ delivery**—a message or job arrives, but possibly more than once. This is true
 Outbox pattern's own retries, not just Zeebe.
 
 **How it manifests**: A job (or message) is delivered twice. Without protection, the side effect runs twice—two welcome
-emails, a counter incremented by two, a double charge.
+emails, two spots claimed for one member, a double charge.
 
 > Addressed by **idempotency** on the receiving side (a processed-operations log). Zeebe's `messageId` adds short-term
 > deduplication while a message sits in the engine's buffer (its TTL, typically seconds)—useful against bursts of

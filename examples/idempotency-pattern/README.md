@@ -8,13 +8,13 @@ By checking if an operation has already been completed before executing business
 
 The idempotency pattern consists of three main components:
 
-1. **OperationId Value Object**: A composite key combining `subscriptionId-elementId` for business-driven idempotency tracking
+1. **OperationId Value Object**: A composite key combining `membershipId-elementId` for business-driven idempotency tracking
 2. **ProcessedOperations Table**: Database table that records completed operations with their operationId and timestamp
 3. **IdempotentOperationExecutor**: A central component that performs the Check → Execute → Record cycle; services wrap their business logic in it
 
 **Key Features:**
 
-- **Composite OperationId**: Uses `subscriptionId-elementId` instead of internal job keys for meaningful tracking
+- **Composite OperationId**: Uses `membershipId-elementId` instead of internal job keys for meaningful tracking
 - **Centralized Check**: The Check → Execute → Record logic lives in one reusable executor, not in every service
 - **Service-Layer Implementation**: Idempotency logic lives in the application layer, not in workers (clean separation of concerns)
 - **Atomic Pattern**: Check → Execute → Record happens in single `@Transactional` boundary
@@ -91,16 +91,16 @@ Services wrap their business logic in `runOnce` and stay focused on business beh
 @Service
 @Transactional
 class SendConfirmationMailService(
-    private val repository: NewsletterSubscriptionRepository,
+    private val repository: MembershipRepository,
     private val idempotencyGuard: IdempotentOperationExecutor
 ) : SendConfirmationMailUseCase {
 
     private val log = KotlinLogging.logger {}
 
-    override fun sendConfirmationMail(subscriptionId: SubscriptionId, operationId: OperationId) {
+    override fun sendConfirmationMail(membershipId: MembershipId, operationId: OperationId) {
         idempotencyGuard.runOnce(operationId) {
-            val subscription = repository.find(subscriptionId)
-            log.info { "Sending confirmation mail to ${subscription.email}" }
+            val membership = repository.find(membershipId)
+            log.info { "Sending confirmation mail to ${membership.email.value}" }
         }
     }
 }
@@ -117,66 +117,72 @@ class SendConfirmationMailWorker(
 ) {
     private val log = KotlinLogging.logger {}
 
-    @JobWorker(type = "newsletter.sendConfirmationMail")
+    @JobWorker(type = ServiceTasks.MEMBERSHIP_SEND_CONFIRMATION_MAIL)
     fun sendConfirmationMail(
         job: ActivatedJob,
-        @Variable("subscriptionId") subscriptionId: String
+        @Variable("membershipId") membershipId: String
     ) {
-        log.debug { "Received Zeebe job to send confirmation mail: $subscriptionId" }
+        log.debug { "Received Zeebe job to send confirmation mail: $membershipId" }
         useCase.sendConfirmationMail(
-            SubscriptionId(UUID.fromString(subscriptionId)),
-            OperationId("$subscriptionId-${job.elementId}")
+            MembershipId(UUID.fromString(membershipId)),
+            OperationId("$membershipId-${job.elementId}")
         )
     }
 }
 ```
 
 **Composite OperationId Construction:**
-- Format: `subscriptionId-elementId`
-- Example: `550e8400-e29b-41d4-a716-446655440000-Activity_SendConfirmationMail`
-- Business-driven: Tied to domain entity (subscription) and BPMN element, not internal Zeebe job keys
+- Format: `membershipId-elementId`
+- Example: `550e8400-e29b-41d4-a716-446655440000-serviceTask_claimMembership`
+- Business-driven: Tied to domain entity (membership) and BPMN element, not internal Zeebe job keys
 
-### **Counter Example: Solving the Idempotency Problem** 🔢
+### **Spot Capacity: Solving the Idempotency Problem** 🎟️
 
-This example also includes a subscription counter that demonstrates how the idempotency pattern solves the duplicate processing problem shown in the [base-scenario](../base-scenario/README.md#the-counter-idempotency-problem).
+The inner circle has a fixed number of spots. `ClaimMembershipService` reserves one per registration and shows how the
+idempotency pattern solves the duplicate processing problem from the [base-scenario](../base-scenario/README.md).
 
 **The Service Implementation:**
 
 ```kotlin
 @Service
 @Transactional
-class IncrementSubscriptionCounterService(
-    private val counterRepository: SubscriptionCounterRepository,
+class ClaimMembershipService(
+    private val repository: MembershipRepository,
+    private val capacity: MembershipCapacity,
     private val idempotencyGuard: IdempotentOperationExecutor
-) : IncrementSubscriptionCounterUseCase {
+) : ClaimMembershipUseCase {
 
-    override fun incrementCounter(subscriptionId: SubscriptionId, operationId: OperationId) {
+    override fun claim(membershipId: MembershipId, operationId: OperationId): Boolean {
         idempotencyGuard.runOnce(operationId) {
-            val counter = counterRepository.find()
-            val updatedCounter = counter.increment()
-            counterRepository.save(updatedCounter)
+            val membership = repository.find(membershipId)
+            val hasEmptySpots = capacity.reserveSpot()
+            val claimedMembership = if (hasEmptySpots) membership.claim() else membership.reject()
+            repository.save(claimedMembership)
         }
+        return repository.find(membershipId).status == MembershipStatus.CLAIMED
     }
 }
 ```
 
 **How It Works:**
 
-1. Worker listens to `newsletter.registrationCompleted` message end event
-2. Constructs `OperationId` from `subscriptionId-elementId`
+1. Worker handles the `membership.claimMembership` job
+2. Constructs `OperationId` from `membershipId-serviceTask_claimMembership`
 3. The executor checks if this exact operation was already processed
-4. If already processed: Skip increment (idempotent behavior)
-5. If not processed: Increment counter AND record operation (atomic)
+4. If already processed: skip the reservation and answer from the stored membership status
+5. If not processed: reserve a spot, update the membership AND record the operation (atomic)
 
 **The Result:**
 
-Unlike the base-scenario where retries cause multiple increments, here the counter increments **exactly once** per registration completion, regardless of how many times Zeebe retries the job. The operation log prevents duplicate increments.
+Unlike the base-scenario where a retried job reserves a second spot for the same person, here a spot is reserved
+**exactly once** per registration, regardless of how many times Zeebe retries the job. The retry still returns the
+same `hasEmptySpots` answer, so the process continues consistently.
 
 **Contrast with Base-Scenario:**
-- **Base-scenario**: Retries → Multiple increments → Wrong counter value
-- **Idempotency-pattern**: Retries → Skip already processed → Correct counter value
+- **Base-scenario**: Retries → Multiple reservations → Spots vanish
+- **Idempotency-pattern**: Retries → Skip already processed → Correct spot count
 
-This demonstrates how tracking completed operations makes non-idempotent operations (like incrementing) safe in distributed systems with at-least-once delivery semantics.
+This demonstrates how tracking completed operations makes non-idempotent operations (like reserving a spot) safe in distributed systems with at-least-once delivery semantics.
 
 ## **Sequence Flow** 📊
 
@@ -190,7 +196,7 @@ sequenceDiagram
     participant DB
 
     Zeebe->>Worker: 1. Trigger job (may be retry)
-    Worker->>Worker: 2. Construct operationId<br/>(subscriptionId-elementId)
+    Worker->>Worker: 2. Construct operationId<br/>(membershipId-elementId)
     Worker->>Service: 3. Call service with operationId
     Service->>DB: 4. Check if operationId exists<br/>in processed_operations
 

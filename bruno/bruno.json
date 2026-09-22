@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "zeebe-newsletter-example",
+  "name": "inner-circle-membership",
   "type": "collection",
   "ignore": [
     "node_modules",

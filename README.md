@@ -125,12 +125,26 @@ command line:
 
 **3: Interact with the Process**
 
-Each example uses the same newsletter subscription process. Predefined API calls live in the [bruno](bruno) directory
-(open them with [Bruno](https://www.usebruno.com/), or replicate them with curl/Postman):
+Each example runs the same **Inner Circle membership** process (a limited, exclusive newsletter: claim a spot, confirm
+by double opt-in, get welcomed). The [bruno](bruno) directory holds end-to-end scenarios (open them with
+[Bruno](https://www.usebruno.com/), or run them headless with the Bruno CLI):
 
-- `subscribe-to-newsletter.bru` — start a subscription (port 8081 examples).
-- `confirm-subscription.bru` — confirm a subscription (port 8081 examples).
-- `subscribe-to-payed-newsletter.bru` — start the paid-newsletter flow used by the **saga-pattern** (port 8083).
+- `01-happy-path` — register, wait for the confirmation task, confirm, assert the membership is activated.
+- `02-reject-confirmation` — register, reject the confirmation, assert the membership is declined.
+- `03-no-empty-spots` — fill the remaining spots, register once more, assert the rejection path.
+- `04-saga-compensation` — the same rejection against the **saga-pattern** (port 8083), asserting that
+  "Revoke claim" ran as compensation.
+
+```bash
+cd bruno
+npx --yes @usebruno/cli@4.0.0 run . --env local --tags pattern -r   # any port-8081 example
+npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r       # saga-pattern
+```
+
+The scenarios assert process state through the Camunda REST API and poll instead of sleeping. They run in CI for every
+pattern module except the intentionally broken base-scenario. The spot capacity is in-memory, so restart the example
+before re-running the suite. Both process definitions start on the same message, so reset the stack
+(`docker-compose down -v`) when switching between the saga-pattern and the other examples.
 
 **4: Monitor the Processes**
 

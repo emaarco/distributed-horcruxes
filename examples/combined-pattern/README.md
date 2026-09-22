@@ -30,14 +30,14 @@ once even if it is retried.
 
 ## **Overview** 🛠️
 
-The example uses the same newsletter subscription process as the other examples and wires the two mechanisms
+The example uses the same Inner Circle membership process as the other examples and wires the two mechanisms
 together:
 
-1. **Outbound (Outbox)** — `ProcessMessagePersistenceAdapter` implements the `NewsletterSubscriptionProcess` port
+1. **Outbound (Outbox)** — `ProcessMessagePersistenceAdapter` implements the `MembershipProcess` port
    and writes a `PENDING` row into the `process_message` table inside the service transaction. The
    `ProcessEngineOutboxScheduler` polls every 200ms, sends messages to Zeebe with a unique `messageId`, and marks
    them `SENT` (or increments `retryCount` on failure).
-2. **Inbound (Idempotency)** — every job worker builds a composite `OperationId` (`subscriptionId-elementId`) and
+2. **Inbound (Idempotency)** — every job worker builds a composite `OperationId` (`membershipId-elementId`) and
    the services wrap their business logic in a central `IdempotentOperationExecutor` that applies the
    **Check → Execute → Record** pattern against the `processed_operations` table, all inside one
    `@Transactional` boundary.
@@ -49,21 +49,21 @@ atomically — the engine is never notified about data that was rolled back.
 
 ### **Outbound: Writing to the Outbox in the Service Transaction**
 
-The service stores the subscription and the outbox message in a single transaction:
+The service stores the membership and the outbox message in a single transaction:
 
 ```kotlin
 @Service
 @Transactional
-class SubscribeToNewsletterService(
-    private val repository: NewsletterSubscriptionRepository,
-    private val processPort: NewsletterSubscriptionProcess, // -> ProcessMessagePersistenceAdapter
-) : SubscribeToNewsletterUseCase {
+class RegisterMembershipService(
+    private val repository: MembershipRepository,
+    private val processPort: MembershipProcess, // -> ProcessMessagePersistenceAdapter
+) : RegisterMembershipUseCase {
 
-    override fun subscribe(command: SubscribeToNewsletterUseCase.Command): SubscriptionId {
-        val subscription = buildSubscription(command)
-        repository.save(subscription)           // business data
-        processPort.submitForm(subscription.id) // outbox row (status = PENDING) - same transaction
-        return subscription.id
+    override fun register(command: RegisterMembershipUseCase.Command): MembershipId {
+        val membership = Membership(email = command.email, name = command.name)
+        repository.save(membership)                     // business data
+        processPort.submitRegistration(membership.id)   // outbox row (status = PENDING) - same transaction
+        return membership.id
     }
 }
 ```
@@ -91,11 +91,11 @@ Workers construct the composite `OperationId`; the service wraps its business lo
 `IdempotentOperationExecutor`, which performs the **Check → Execute → Record** cycle in one place:
 
 ```kotlin
-@JobWorker(type = ServiceTasks.NEWSLETTER_SEND_WELCOME_MAIL)
-fun sendWelcomeMail(job: ActivatedJob, @Variable("subscriptionId") subscriptionId: String) {
+@JobWorker(type = ServiceTasks.MEMBERSHIP_SEND_WELCOME_MAIL)
+fun sendWelcomeMail(job: ActivatedJob, @Variable("membershipId") membershipId: String) {
     useCase.sendWelcomeMail(
-        SubscriptionId(UUID.fromString(subscriptionId)),
-        OperationId("$subscriptionId-${job.elementId}"),
+        MembershipId(UUID.fromString(membershipId)),
+        OperationId("$membershipId-${job.elementId}"),
     )
 }
 ```
@@ -117,14 +117,14 @@ class IdempotentOperationExecutor(
 @Service
 @Transactional
 class SendWelcomeMailService(
-    private val repository: NewsletterSubscriptionRepository,
+    private val repository: MembershipRepository,
     private val idempotencyGuard: IdempotentOperationExecutor,
 ) : SendWelcomeMailUseCase {
 
-    override fun sendWelcomeMail(subscriptionId: SubscriptionId, operationId: OperationId) {
+    override fun sendWelcomeMail(membershipId: MembershipId, operationId: OperationId) {
         idempotencyGuard.runOnce(operationId) {
-            val subscription = repository.find(subscriptionId)
-            log.info { "Sending welcome mail to ${subscription.email}" }
+            val membership = repository.find(membershipId)
+            log.info { "Sending welcome mail to ${membership.email.value}" }
         }
     }
 }
@@ -152,7 +152,7 @@ sequenceDiagram
 
     Note over Zeebe,DB: Inbound path (Idempotency)
     Zeebe ->> Worker: 6. Trigger job (may be a retry)
-    Worker ->> Worker: 7. Build operationId (subscriptionId-elementId)
+    Worker ->> Worker: 7. Build operationId (membershipId-elementId)
     Worker ->> DB: 8. Check processed_operations
     alt Already processed
         Worker -->> Zeebe: 9a. Skip side effect, complete job

@@ -58,10 +58,22 @@ All connect to:
 
 ### Interacting with Examples
 
-Use Bruno API client with files in `bruno/` directory:
+The `bruno/` directory is an end-to-end scenario suite (Bruno CLI pinned to 4.0.0, poll helpers in
+`bruno/collection.bru`, environments `local` for port 8081 and `saga` for port 8083):
 
-- `subscribe-to-newsletter.bru` - Subscribe to newsletter (creates subscription and starts process)
-- `confirm-subscription.bru` - Confirm subscription (triggers process continuation)
+- `01-happy-path`, `02-reject-confirmation`, `03-no-empty-spots` — tagged `pattern`, run against any port-8081 example
+- `04-saga-compensation` — tagged `saga`, run against saga-pattern
+
+```bash
+cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env local --tags pattern -r
+cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r
+```
+
+Assertions go through the Camunda v2 REST API (`process-instances/search`, `element-instances/search`). The pre-merge
+workflow runs the suite as a matrix over after-transaction, outbox-pattern, idempotency-pattern, combined-pattern and
+saga-pattern, each with a fresh stack. Locally the spot capacity is in-memory (restart the app between runs) and both
+process definitions share the start message, so reset the stack (`docker-compose down -v`) when switching between
+saga-pattern and the other examples.
 
 ### BPMN Model Generation
 
@@ -69,8 +81,10 @@ Use Bruno API client with files in `bruno/` directory:
 # Generate Kotlin models from BPMN files
 gradle generateBpmnModelApi
 
-# BPMN source: configuration/newsletter.bpmn
+# BPMN source: examples/<pattern-name>/src/main/resources/inner-circle-membership.bpmn
+#              (saga-pattern: inner-circle-membership-compensation.bpmn)
 # Generated output: examples/*/src/main/kotlin/io/miragon/example/adapter/process/
+# Lint all models: npm run lint:bpmn
 ```
 
 ### Creating GitHub Issues
@@ -158,7 +172,7 @@ Saves messages to DB table in same transaction. Background scheduler sends them 
 #### Idempotency Pattern (`examples/idempotency-pattern`)
 
 Services wrap their business logic in a central `IdempotentOperationExecutor` (`runOnce`), which checks the
-`processed_operations` table before executing. Uses composite key: `subscriptionId-elementId`.
+`processed_operations` table before executing. Uses composite key: `membershipId-elementId`.
 **Pattern**: Check if processed → Execute → Record completion (all in one transaction).
 
 #### Combined Pattern (`examples/combined-pattern`)
@@ -169,21 +183,31 @@ Zeebe → service — addresses all six challenges.
 
 ### Shared Domain Model
 
-All examples use the same newsletter subscription process:
+All examples use the MiraVelo "Inner Circle" membership process (a limited, exclusive newsletter; reference model:
+`Miragon/miravelo-reference`, membership-program stage 07/08):
 
-1. User submits subscription form → Process starts → Sends confirmation email
-2. User confirms subscription → Process continues → Sends welcome email
-3. Process completes
+1. User submits registration form → Process starts → "Claim membership" reserves one of the limited spots
+   (returns `hasEmptySpots`; no spot → rejection mail → end)
+2. Confirmation subprocess → Sends confirmation email → waits for `miravelo.membershipConfirmed`
+   (reminder timer re-sends the mail; deadline timer or `miravelo.confirmationRejected` declines the membership)
+3. User confirms → Welcome mail → Process completes
 
-The BPMN model (`configuration/newsletter.bpmn`) is shared across both examples and deployed at application startup via
-`@Deployment` annotation.
+Each module holds its own copy of the model in `src/main/resources` and deploys it at startup via `@Deployment`.
+The five pattern modules use `inner-circle-membership.bpmn` and deliberately never release a declined member's spot.
+The saga-pattern uses `inner-circle-membership-compensation.bpmn`, where "Revoke claim" is a compensation handler
+attached to "Claim membership" and both decline end events throw compensation.
+
+Job types: `membership.claimMembership`, `membership.sendConfirmationMail`, `membership.sendWelcomeMail`,
+`membership.sendRejectionMail`, saga only: `membership.revokeClaim`.
+Messages: `miravelo.registrationSubmitted` (start), `miravelo.membershipConfirmed`, `miravelo.confirmationRejected`
+(both correlated on `membershipId`).
 
 ## Important Context
 
 ### Zeebe Integration
 
 - Uses `spring-zeebe` client library (Camunda 8)
-- Process definitions are in `configuration/` and shared across examples
+- Each example keeps its process definition in its own `src/main/resources`
 - Workers use `@JobWorker` annotation to handle Zeebe job types
 - Messages are sent via `CamundaClient` API (wrapped in adapter implementations)
 
@@ -195,12 +219,12 @@ The BPMN model (`configuration/newsletter.bpmn`) is shared across both examples 
 
 ### Testing
 
-The example modules have unit tests for their application services (`gradle test`). For end-to-end behavior,
-test manually via the Bruno API files and monitoring in Operate.
+The example modules have unit tests for their application services (`gradle test`). End-to-end behavior is covered by
+the Bruno scenario suite (see "Interacting with Examples"), which also runs in CI; use Operate for manual inspection.
 
 ### Distributed Transaction Challenges
 
-Six main problems (see `challenges.md` for details):
+Six main problems (see `CHALLENGES.md` for details):
 
 1. Premature execution - Process starts before DB commits
 2. Out-of-sync states - DB fails after notifying Zeebe

@@ -17,5 +17,9 @@ command = "./gradlew test"
 icon = "test-tube"
 
 [scripts.run.smoke]
-command = "cd bruno && npx --yes @usebruno/cli run --delay 3000 --exclude-tags payed --bail"
+command = "cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env local --tags pattern -r"
+icon = "activity"
+
+[scripts.run.smoke-saga]
+command = "cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r"
 icon = "activity"

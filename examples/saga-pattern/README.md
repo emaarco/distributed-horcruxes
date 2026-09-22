@@ -1,12 +1,11 @@
 # ⏪ Saga Pattern with BPMN Compensation
 
 This example demonstrates how to handle **distributed transaction rollbacks** using the saga pattern with BPMN
-compensation events. When a later step in a process fails, compensation handlers can reliably undo previously completed
-operations to maintain consistency.
+compensation events. When a later step in a process fails or is cancelled, compensation handlers reliably undo
+previously completed operations to keep the system consistent.
 
-By leveraging Zeebe's built-in compensation mechanism, this approach provides a declarative way to define rollback logic
-directly in your BPMN model, ensuring that failed transactions can be properly reverted even across distributed system
-boundaries.
+By leveraging Zeebe's built-in compensation mechanism, the rollback logic is declared directly in the BPMN model,
+so the engine orchestrates it whenever the process takes a path that requires undoing earlier work.
 
 ## **Overview** 🛠️
 
@@ -16,120 +15,118 @@ undo the effects of previously completed steps.
 
 **Core Concept:**
 
-1. Execute forward operations (reserve → pay → confirm)
-2. If any step fails, trigger compensation for completed steps
-3. Compensation handlers undo the effects in reverse order
+1. Execute forward operations (claim a spot → wait for confirmation → activate)
+2. If a later step fails or is abandoned, trigger compensation for the completed steps
+3. Compensation handlers undo the effects
 
-This example demonstrates a payed newsletter subscription flow where payment failures trigger automatic cancellation of
-the reserved spot.
+This example uses the Inner Circle membership flow: a registration claims one of the limited spots. If the member
+never confirms (the confirmation expires) or actively declines, the claim is revoked and the spot is released again.
+
+**Contrast with the other modules:** the other pattern examples "forget" this rollback. There, a membership whose
+confirmation expired or was rejected keeps its spot forever, and the Inner Circle slowly fills up with declined
+members.
 
 ## **Process Flow** 📊
 
-The `payed-newsletter.bpmn` model implements the following flow:
+The `inner-circle-membership-compensation.bpmn` model implements the following flow:
+
+![Inner Circle Membership with Compensation](../../assets/inner-circle-membership-compensation.png)
 
 ```
-1. Submit Form → Start Process
-2. Reserve Spot (compensatable)
-3. Process Payment (random success/fail)
-4. Gateway: Check payment success
-   ├─ Success → Send Welcome Mail → End (Registration Completed)
-   └─ Failure → Trigger Compensation → Cancel Reservation → End (Payment Failed)
+1. Registration submitted (message miravelo.registrationSubmitted) → Start Process
+2. Claim membership (compensatable, reserves a spot in memory)
+3. Gateway: Has empty spots?
+   ├─ No  → Send rejection mail → End (Membership rejected)
+   └─ Yes → Confirm membership subprocess
+            ├─ Send confirmation mail, wait for miravelo.membershipConfirmed
+            ├─ Resend confirmation mail every day
+            ├─ Confirmation deadline reached → Compensate → Revoke claim → End (Confirmation expired)
+            └─ miravelo.confirmationRejected → Compensate → Revoke claim → End (Membership declined)
+4. Confirmed → Send welcome mail → End (Membership activated)
 ```
 
 **Key BPMN Elements:**
 
-- **Compensatable Activity**: `Reserve Spot` is marked with boundary compensation event
-- **Compensation Handler**: `Cancel Reservation` service task with `isForCompensation="true"`
-- **Compensation Trigger**: End event with compensation definition triggers rollback
+- **Compensatable Activity**: `Claim membership` carries a boundary compensation event
+- **Compensation Handler**: `Revoke claim` service task with `isForCompensation="true"` (job `membership.revokeClaim`)
+- **Compensation Triggers**: The end events `Confirmation expired` and `Membership declined` throw compensation for
+  `Claim membership`
 
 ## **Implementation** 💻
 
-This example demonstrates the saga pattern with **in-memory spot management** to show compensation working with
-non-persistent state:
-
 **Spot Management (Limited Resource):**
 
-- [InMemoryNewsletterSpotManager](src/main/kotlin/io/miragon/example/adapter/out/memory/InMemoryNewsletterSpotManager.kt):
-  In-memory manager tracking 50 subscriber spots using `mutableSetOf<Email>`.
-- Spots are reserved or released (compensated) based on payment outcome. Demonstrates realistic limited resource
-  constraint.
+- [InMemoryMembershipCapacity](src/main/kotlin/io/miragon/example/adapter/out/memory/InMemoryMembershipCapacity.kt):
+  In-memory counter of the available Inner Circle spots. `reserveSpot()` takes one, `releaseSpot()` gives it back.
 
 **Key Services:**
 
-1. [SubscribeToPayedNewsletterService](src/main/kotlin/io/miragon/example/application/service/SubscribeToPayedNewsletterService.kt):
-   Entry point that checks spot availability, persists subscription to DB, and publishes message to Zeebe
-
-2. [ReserveSpotService](src/main/kotlin/io/miragon/example/application/service/ReserveSpotService.kt): Reserves spot
-   in memory (compensatable operation)
-3. [ProcessPaymentService](src/main/kotlin/io/miragon/example/application/service/ProcessPaymentService.kt): Uses
-   `Random.nextBoolean()` to simulate payment success/failure, persists result to DB
-4. [CancelReservationService](src/main/kotlin/io/miragon/example/application/service/CancelReservationService.kt):
-   Compensation handler that releases spot back to available pool
-5. [SendWelcomeMailService](src/main/kotlin/io/miragon/example/application/service/SendWelcomeMailService.kt): Logs
-   welcome mail on successful payment
+1. [RegisterMembershipService](src/main/kotlin/io/miragon/example/application/service/RegisterMembershipService.kt):
+   Persists the membership and publishes `miravelo.registrationSubmitted` to start the process
+2. [ClaimMembershipService](src/main/kotlin/io/miragon/example/application/service/ClaimMembershipService.kt):
+   Reserves a spot (compensatable operation) and marks the membership as claimed or rejected
+3. [RevokeClaimService](src/main/kotlin/io/miragon/example/application/service/RevokeClaimService.kt):
+   Compensation handler that releases the spot and marks the membership as declined
+4. [ConfirmMembershipService](src/main/kotlin/io/miragon/example/application/service/ConfirmMembershipService.kt) /
+   [RejectConfirmationService](src/main/kotlin/io/miragon/example/application/service/RejectConfirmationService.kt):
+   Publish `miravelo.membershipConfirmed` or `miravelo.confirmationRejected` correlated by `membershipId`
 
 **Zeebe Job Workers:**
 
-- **[ReserveSpotWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/ReserveSpotWorker.kt)**: Handles
-  `newsletter.reserveSpot` job type
-- **[ProcessPaymentWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/ProcessPaymentWorker.kt)**: Handles
-  `newsletter.processPayment` job type
-- **[CancelReservationWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/CancelReservationWorker.kt)**: Handles
-  `newsletter.cancelSpot` compensation job type, triggered automatically by Zeebe
-- **[SendWelcomeMailWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/SendWelcomeMailWorker.kt)**: Handles
-  `newsletter.sendWelcomeMail` job type
+- **[ClaimMembershipWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/ClaimMembershipWorker.kt)**:
+  `membership.claimMembership`, returns `hasEmptySpots`
+- **[RevokeClaimWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/RevokeClaimWorker.kt)**:
+  `membership.revokeClaim`, triggered automatically by Zeebe as compensation
+- **[SendConfirmationMailWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/SendConfirmationMailWorker.kt)**,
+  **[SendRejectionMailWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/SendRejectionMailWorker.kt)**,
+  **[SendWelcomeMailWorker](src/main/kotlin/io/miragon/example/adapter/in/zeebe/SendWelcomeMailWorker.kt)**:
+  the remaining `membership.*` job types
 
-**REST API:**
+**REST API (port 8083):**
 
-- [SubscribeToPayedNewsletterController](src/main/kotlin/io/miragon/example/adapter/in/rest/SubscribeToPayedNewsletterController.kt):
-  Exposes `POST /api/payed-newsletter/subscribe` endpoint
+- `POST /api/memberships/register` with `{ "email": "...", "name": "..." }` → `{ "membershipId": "..." }`
+- `POST /api/memberships/confirm/{membershipId}`
+- `POST /api/memberships/reject/{membershipId}`
 
 **Process Adapter:**
 
-- [PayedNewsletterProcessAdapter](src/main/kotlin/io/miragon/example/adapter/out/zeebe/PayedNewsletterProcessAdapter.kt):
-  Publishes `Message_FormSubmitted` to start the process instance
-
-**BPMN Configuration:**
-
-The [`payed-newsletter.bpmn`](../../configuration/payed-newsletter.bpmn) model defines the compensation structure:
-
-- `serviceTask_reserveSpot`: Compensatable activity with boundary compensation event
-- `serviceTask_cancelReservation`: Compensation handler marked with `isForCompensation="true"`
-- `endEvent_paymentFailed`: End event that triggers compensation via `compensateEventDefinition`
+- [MembershipProcessAdapter](src/main/kotlin/io/miragon/example/adapter/out/zeebe/MembershipProcessAdapter.kt):
+  Publishes the `miravelo.*` messages directly to Zeebe
 
 ## **Sequence Flow** 📊
 
-If the payment fails, the following sequence of events occurs:
+If the member declines, the following sequence of events occurs:
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Service
     participant DB
-    participant SpotManager
+    participant Capacity
     participant Zeebe
     participant Workers
-    User ->> Service: POST /api/payed-newsletter/subscribe
-    Service ->> DB: Save subscription
-    Service ->> Zeebe: Publish Message_FormSubmitted
-    Zeebe ->> Workers: Trigger Reserve Spot job
-    Workers ->> SpotManager: reserveSpot(email)
-    Note over SpotManager: Add to in-memory set<br/>(max 50 spots)
-    Zeebe ->> Workers: Trigger Process Payment job
-    Workers ->> DB: Update paymentSuccessful=false
-    Workers ->> Zeebe: Complete with paymentSuccessful=false
-    Note over Zeebe: Gateway detects failure
+    User ->> Service: POST /api/memberships/register
+    Service ->> DB: Save membership
+    Service ->> Zeebe: Publish miravelo.registrationSubmitted
+    Zeebe ->> Workers: Trigger Claim membership job
+    Workers ->> Capacity: reserveSpot()
+    Workers ->> DB: status = CLAIMED
+    Zeebe ->> Workers: Trigger Send confirmation mail job
+    User ->> Service: POST /api/memberships/reject/{membershipId}
+    Service ->> Zeebe: Publish miravelo.confirmationRejected
     Note over Zeebe: 🔄 Compensation triggered
-    Zeebe ->> Workers: Trigger Cancel Reservation (compensation)
-    Workers ->> SpotManager: releaseSpot(email)
-    Note over SpotManager: Remove from in-memory set<br/>Spot available again
+    Zeebe ->> Workers: Trigger Revoke claim (compensation)
+    Workers ->> Capacity: releaseSpot()
+    Workers ->> DB: status = DECLINED
     Note over Zeebe: Process ends after compensation
 ```
 
+The same compensation runs when the confirmation deadline timer fires instead of the rejection message.
+
 **Spot Lifecycle:**
 
-- Email reserved in memory → Payment succeeds → Welcome mail sent (happy path)
-- Email reserved in memory → Payment fails → Compensation releases email from memory (compensation path)
+- Spot reserved → Member confirms → Welcome mail sent, spot stays taken (happy path)
+- Spot reserved → Confirmation expires or is rejected → Compensation releases the spot (compensation path)
 
 ## **Advantages** 🎉
 
@@ -139,7 +136,6 @@ sequenceDiagram
 - **Decoupled Rollback**: Compensation handlers are separate from forward logic
 - **Guaranteed Execution**: Compensation handlers retry automatically if they fail
 - **Partial Rollback**: Can compensate specific activities, not all-or-nothing
-- **Audit Trail**: Database tracks both successful and compensated transactions
 
 ## **Downsides** ⚠️
 
@@ -157,7 +153,7 @@ sequenceDiagram
 - Transactions span multiple microservices or external systems
 - Traditional distributed transactions (2PC) are not feasible
 - Long-running business processes need rollback capability
-- Operations can be semantically undone (e.g., cancel reservation, refund payment)
+- Operations can be semantically undone (e.g., release a spot, cancel a booking)
 - You need visibility into rollback operations for business stakeholders
 
 **Don't use saga pattern when:**
@@ -167,8 +163,6 @@ sequenceDiagram
 - You need immediate, synchronous rollbacks
 
 ## **Complementary Patterns**
-
-This saga pattern can be combined with other patterns for robust distributed transactions:
 
 | Pattern Combination          | What It Solves                                                              |
 |------------------------------|-----------------------------------------------------------------------------|
@@ -184,20 +178,20 @@ production systems.
 
 1. **Start infrastructure**: `cd stack && docker-compose up`
 2. **Run the application**: Execute `ExampleApplication.kt` (port 8083)
-3. **Trigger subscription**: Use Bruno to execute `subscribe-to-payed-newsletter.bru`
+3. **Register**: `POST /api/memberships/register` and note the `membershipId`
 4. **Monitor in Operate**: Visit http://localhost:8080/operate (demo/demo)
 5. **Observe outcomes**:
-    - **Payment success**: Process completes, spot remains reserved
-    - **Payment failure**: Compensation triggers, spot is released
+    - **Confirm** via `POST /api/memberships/confirm/{membershipId}`: process completes, spot stays taken
+    - **Reject** via `POST /api/memberships/reject/{membershipId}` or wait for the deadline: compensation runs,
+      the log shows the released spot and the membership is `DECLINED`
 
-**Pro tip**: Run the subscription multiple times to see both paths, as payment success is random.
+Or run the automated scenario: `cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r`.
+
+> ⚠️ This process and the one of the other examples start on the same message. If a pattern example was deployed to the
+> same stack before, a registration starts both processes. Reset the stack with `docker-compose down -v` first.
 
 ## **Conclusion**
 
 The saga pattern with BPMN compensation provides a powerful mechanism for handling distributed rollbacks in
 process-driven architectures. By declaring compensation logic in your BPMN model, Zeebe can automatically orchestrate
-rollbacks when failures occur, ensuring consistency across your distributed system.
-
-While more complex than simple database transactions, sagas are essential for building resilient microservice
-architectures where operations span multiple independent systems that cannot participate in traditional ACID
-transactions.
+rollbacks when a process is abandoned, ensuring consistency across your distributed system.

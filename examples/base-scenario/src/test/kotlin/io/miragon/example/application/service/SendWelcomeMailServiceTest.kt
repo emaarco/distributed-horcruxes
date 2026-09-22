@@ -1,37 +1,37 @@
 package io.miragon.example.application.service
 
-import io.miragon.example.application.port.out.NewsletterSubscriptionRepository
-import io.miragon.example.domain.*
-import io.mockk.*
+import io.miragon.example.application.port.out.MembershipRepository
+import io.miragon.example.domain.Email
+import io.miragon.example.domain.Membership
+import io.miragon.example.domain.MembershipId
+import io.miragon.example.domain.Name
+import io.mockk.confirmVerified
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 import java.util.*
 
 class SendWelcomeMailServiceTest {
 
-    private val repository = mockk<NewsletterSubscriptionRepository>()
+    private val repository = mockk<MembershipRepository>()
     private val underTest = SendWelcomeMailService(repository)
 
     @Test
-    fun `should find subscription and send welcome mail`() {
+    fun `should load membership when handling sendWelcomeMail`() {
         // Given
-        val subscriptionId = SubscriptionId(UUID.randomUUID())
-        val subscription = NewsletterSubscription(
-            id = subscriptionId,
-            email = Email("test@example.com"),
+        val membership = Membership(
+            id = MembershipId(UUID.randomUUID()),
             name = Name("Test User"),
-            newsletter = NewsletterId(UUID.randomUUID()),
-            registrationDate = LocalDateTime.now(),
-            status = SubscriptionStatus.PENDING
+            email = Email("test@example.com")
         )
-
-        every { repository.find(subscriptionId) } returns subscription
+        every { repository.find(membership.id) } returns membership
 
         // When
-        underTest.sendWelcomeMail(subscriptionId)
+        underTest.sendWelcomeMail(membership.id)
 
         // Then
-        verify(exactly = 1) { repository.find(subscriptionId) }
+        verify(exactly = 1) { repository.find(membership.id) }
         confirmVerified(repository)
     }
 }

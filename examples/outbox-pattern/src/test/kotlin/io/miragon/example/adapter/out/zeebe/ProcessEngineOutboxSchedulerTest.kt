@@ -35,7 +35,7 @@ class ProcessEngineOutboxSchedulerTest {
         val message = ProcessMessageEntity(
             messageName = "form-submitted",
             correlationId = "sub-123",
-            variables = """{"subscriptionId":"sub-123"}"""
+            variables = """{"membershipId":"member-123"}"""
         )
         val sentMessage = message.copy(status = MessageStatus.SENT)
 
@@ -65,7 +65,7 @@ class ProcessEngineOutboxSchedulerTest {
         val message = ProcessMessageEntity(
             messageName = "form-submitted",
             correlationId = "sub-456",
-            variables = """{"subscriptionId":"sub-456"}""",
+            variables = """{"membershipId":"member-456"}""",
             retryCount = 0
         )
         val retryMessage = message.copy(retryCount = 1)
