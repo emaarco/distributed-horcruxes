@@ -2,7 +2,7 @@ package io.miragon.example.adapter.`in`.zeebe
 
 import io.camunda.client.annotation.JobWorker
 import io.camunda.client.annotation.Variable
-import io.miragon.example.adapter.process.InnerCircleMembershipCompensationProcessApi.ServiceTasks
+import io.miragon.example.adapter.process.ServiceTasks
 import io.miragon.example.application.port.`in`.SendConfirmationMailUseCase
 import io.miragon.example.domain.MembershipId
 import mu.KotlinLogging
