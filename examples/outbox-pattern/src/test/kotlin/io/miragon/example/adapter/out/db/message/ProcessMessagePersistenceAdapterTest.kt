@@ -1,8 +1,8 @@
 package io.miragon.example.adapter.out.db.message
 
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_REGISTRATION_SUBMITTED
 import io.miragon.example.domain.MembershipId
 import io.mockk.every
 import io.mockk.mockk

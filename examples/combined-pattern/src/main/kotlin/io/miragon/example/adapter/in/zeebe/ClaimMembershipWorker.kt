@@ -3,8 +3,8 @@ package io.miragon.example.adapter.`in`.zeebe
 import io.camunda.client.annotation.JobWorker
 import io.camunda.client.annotation.Variable
 import io.camunda.client.api.response.ActivatedJob
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.ServiceTasks
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Variables
+import io.miragon.example.adapter.process.ServiceTasks
+import io.miragon.example.adapter.process.ProcessVariables
 import io.miragon.example.application.port.`in`.ClaimMembershipUseCase
 import io.miragon.example.domain.MembershipId
 import io.miragon.example.domain.OperationId
@@ -24,6 +24,6 @@ class ClaimMembershipWorker(private val useCase: ClaimMembershipUseCase) {
             MembershipId(UUID.fromString(membershipId)),
             OperationId("$membershipId-${job.elementId}")
         )
-        return mapOf(Variables.ServiceTaskClaimMembership.HAS_EMPTY_SPOTS.value to hasEmptySpots)
+        return mapOf(ProcessVariables.HAS_EMPTY_SPOTS to hasEmptySpots)
     }
 }

@@ -1,9 +1,9 @@
 package io.miragon.example.adapter.out.zeebe
 
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Variables
+import io.miragon.example.adapter.process.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.adapter.process.ProcessVariables
 import io.miragon.example.domain.MembershipId
 import io.mockk.*
 import org.junit.jupiter.api.Test
@@ -19,7 +19,7 @@ class MembershipProcessAdapterTest {
         // Given
         val membershipId = MembershipId(UUID.randomUUID())
         val expectedVariables = mapOf(
-            Variables.StartEventRegistrationSubmitted.MEMBERSHIP_ID.value to membershipId.value.toString()
+            ProcessVariables.MEMBERSHIP_ID to membershipId.value.toString()
         )
 
         every { engineApi.startProcessViaMessage(any(), any(), any()) } returns mockk()
