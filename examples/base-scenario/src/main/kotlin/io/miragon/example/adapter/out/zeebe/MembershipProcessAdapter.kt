@@ -1,10 +1,10 @@
 package io.miragon.example.adapter.out.zeebe
 
 import io.camunda.client.CamundaClient
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Variables
+import io.miragon.example.adapter.process.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.adapter.process.ProcessVariables
 import io.miragon.example.application.port.out.MembershipProcess
 import io.miragon.example.domain.MembershipId
 import org.springframework.stereotype.Component
@@ -21,13 +21,8 @@ class MembershipProcessAdapter(
 ) : MembershipProcess {
 
     override fun submitRegistration(id: MembershipId) {
-        val variables = mapOf(Variables.StartEventRegistrationSubmitted.MEMBERSHIP_ID.value to id.value.toString())
-        camundaClient.newPublishMessageCommand()
-            .messageName(MIRAVELO_REGISTRATION_SUBMITTED.value)
-            .withoutCorrelationKey()
-            .variables(variables)
-            .send()
-            .join()
+        val variables = mapOf(ProcessVariables.MEMBERSHIP_ID to id.value.toString())
+        publishCorrelated(MIRAVELO_REGISTRATION_SUBMITTED.value, id, variables)
     }
 
     override fun confirmMembership(id: MembershipId) {
@@ -38,10 +33,12 @@ class MembershipProcessAdapter(
         publishCorrelated(MIRAVELO_CONFIRMATION_REJECTED.value, id)
     }
 
-    private fun publishCorrelated(messageName: String, id: MembershipId) {
+    private fun publishCorrelated(messageName: String, id: MembershipId, variables: Map<String, Any> = emptyMap()) {
         camundaClient.newPublishMessageCommand()
             .messageName(messageName)
             .correlationKey(id.value.toString())
+            .messageId("${id.value}-$messageName")
+            .variables(variables)
             .timeToLive(Duration.of(10, ChronoUnit.SECONDS))
             .send()
             .join()

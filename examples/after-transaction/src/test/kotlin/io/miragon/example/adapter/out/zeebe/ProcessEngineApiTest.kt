@@ -22,8 +22,10 @@ class ProcessEngineApiTest {
         every {
             camundaClient.newPublishMessageCommand()
                 .messageName(any())
-                .withoutCorrelationKey()
+                .correlationKey(any())
+                .messageId(any())
                 .variables(any<Map<String, Any>>())
+                .timeToLive(any())
                 .send()
                 .join()
         } returns response
@@ -46,6 +48,7 @@ class ProcessEngineApiTest {
             camundaClient.newPublishMessageCommand()
                 .messageName(any())
                 .correlationKey(any())
+                .messageId(any())
                 .variables(any<Map<String, Any>>())
                 .timeToLive(any())
                 .send().join()

@@ -1,9 +1,9 @@
 package io.miragon.example.adapter.out.zeebe
 
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Variables
+import io.miragon.example.adapter.process.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.adapter.process.ProcessVariables
 import io.miragon.example.application.port.out.MembershipProcess
 import io.miragon.example.domain.MembershipId
 import org.springframework.stereotype.Component
@@ -14,7 +14,7 @@ class MembershipProcessAdapter(
 ) : MembershipProcess {
 
     override fun submitRegistration(id: MembershipId) {
-        val variables = mapOf(Variables.StartEventRegistrationSubmitted.MEMBERSHIP_ID.value to id.value.toString())
+        val variables = mapOf(ProcessVariables.MEMBERSHIP_ID to id.value.toString())
         engineApi.startProcessViaMessage(
             messageName = MIRAVELO_REGISTRATION_SUBMITTED.value,
             correlationId = id.value.toString(),

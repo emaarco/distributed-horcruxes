@@ -2,9 +2,9 @@ package io.miragon.example.adapter.out.zeebe
 
 import io.camunda.client.CamundaClient
 import io.camunda.client.api.response.PublishMessageResponse
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_CONFIRMATION_REJECTED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
-import io.miragon.example.adapter.process.InnerCircleMembershipProcessApi.Messages.MIRAVELO_REGISTRATION_SUBMITTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_CONFIRMATION_REJECTED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_MEMBERSHIP_CONFIRMED
+import io.miragon.example.adapter.process.Messages.MIRAVELO_REGISTRATION_SUBMITTED
 import io.miragon.example.domain.MembershipId
 import io.mockk.every
 import io.mockk.mockk
@@ -24,8 +24,10 @@ class MembershipProcessAdapterTest {
         every {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_REGISTRATION_SUBMITTED.value)
-                .withoutCorrelationKey()
+                .correlationKey(any())
+                .messageId(any())
                 .variables(any<Map<String, Any>>())
+                .timeToLive(any())
                 .send()
                 .join()
         } returns mockk<PublishMessageResponse>()
@@ -37,8 +39,10 @@ class MembershipProcessAdapterTest {
         verify(exactly = 1) {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_REGISTRATION_SUBMITTED.value)
-                .withoutCorrelationKey()
+                .correlationKey(any())
+                .messageId(any())
                 .variables(any<Map<String, Any>>())
+                .timeToLive(any())
                 .send()
                 .join()
         }
@@ -52,6 +56,8 @@ class MembershipProcessAdapterTest {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_MEMBERSHIP_CONFIRMED.value)
                 .correlationKey(membershipId.value.toString())
+                .messageId(any())
+                .variables(any<Map<String, Any>>())
                 .timeToLive(any())
                 .send()
                 .join()
@@ -65,6 +71,8 @@ class MembershipProcessAdapterTest {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_MEMBERSHIP_CONFIRMED.value)
                 .correlationKey(membershipId.value.toString())
+                .messageId(any())
+                .variables(any<Map<String, Any>>())
                 .timeToLive(any())
                 .send()
                 .join()
@@ -79,6 +87,8 @@ class MembershipProcessAdapterTest {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_CONFIRMATION_REJECTED.value)
                 .correlationKey(membershipId.value.toString())
+                .messageId(any())
+                .variables(any<Map<String, Any>>())
                 .timeToLive(any())
                 .send()
                 .join()
@@ -92,6 +102,8 @@ class MembershipProcessAdapterTest {
             camundaClient.newPublishMessageCommand()
                 .messageName(MIRAVELO_CONFIRMATION_REJECTED.value)
                 .correlationKey(membershipId.value.toString())
+                .messageId(any())
+                .variables(any<Map<String, Any>>())
                 .timeToLive(any())
                 .send()
                 .join()

@@ -42,8 +42,10 @@ class MembershipProcessAdapter(
         val variables = mapOf("membershipId" to id.value.toString())
         camundaClient.newPublishMessageCommand()
             .messageName("miravelo.registrationSubmitted")
-            .withoutCorrelationKey()
+            .correlationKey(id.value.toString())
+            .messageId("${id.value}-miravelo.registrationSubmitted")
             .variables(variables)
+            .timeToLive(Duration.ofSeconds(10))
             .send()
             .join()
     }

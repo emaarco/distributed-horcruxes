@@ -130,8 +130,10 @@ The solution uses a layered architecture to separate concerns:
            // Actual Zeebe call happens here, after commit
            camundaClient.newPublishMessageCommand()
                .messageName(messageName)
-               .withoutCorrelationKey()
+               .correlationKey(correlationId)
+               .messageId("$correlationId-$messageName")
                .variables(allVariables)
+               .timeToLive(Duration.ofSeconds(10))
                .send()
                .join()
        }
