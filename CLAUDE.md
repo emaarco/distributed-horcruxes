@@ -20,7 +20,7 @@ can cause inconsistent states. The examples show different approaches to handle 
 cd stack && docker-compose up
 
 # Access Operate UI at http://localhost:8080/operate (credentials: demo/demo)
-# (Camunda 8.9 consolidated orchestration cluster serves Operate on port 8080)
+# (Camunda 8.10 consolidated orchestration cluster serves Operate on port 8080)
 ```
 
 ### Build & Run
