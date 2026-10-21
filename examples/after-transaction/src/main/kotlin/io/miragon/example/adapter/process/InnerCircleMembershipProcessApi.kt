@@ -25,10 +25,6 @@ import io.miragon.bpmn.runtime.SequenceFlows
 import io.miragon.bpmn.runtime.TimerEvent
 import io.miragon.bpmn.runtime.TimerType
 import io.miragon.bpmn.runtime.VariableName
-import kotlin.Boolean
-import kotlin.String
-import kotlin.Suppress
-import kotlin.collections.List
 
 object InnerCircleMembershipProcessApi {
   val PROCESS_ID: ProcessId = ProcessId("inner-circle-membership")
@@ -125,8 +121,7 @@ object InnerCircleMembershipProcessApi {
       id = ElementId(EventConfirmationRejected.ELEMENT_ID),
       elementType = BpmnElementType.BOUNDARY_EVENT,
       name = "Confirmation rejected",
-    ), HasSuccessors<EventConfirmationRejected.Next>, BoundaryEvent<SubProcessConfirmMembership>,
-        HasMessage {
+    ), HasSuccessors<EventConfirmationRejected.Next>, BoundaryEvent<SubProcessConfirmMembership>, HasMessage {
       override val eventType: BpmnEventType = BpmnEventType.MESSAGE
 
       const val ELEMENT_ID: String = "event_confirmationRejected"
@@ -355,8 +350,7 @@ object InnerCircleMembershipProcessApi {
       id = ElementId(SubProcessConfirmMembership.ELEMENT_ID),
       elementType = BpmnElementType.SUB_PROCESS,
       name = "Confirm membership",
-    ), HasSuccessors<SubProcessConfirmMembership.Next>,
-        FlowScope<SubProcessConfirmMembership.Start> {
+    ), HasSuccessors<SubProcessConfirmMembership.Next>, FlowScope<SubProcessConfirmMembership.Start> {
       const val ELEMENT_ID: String = "subProcess_confirmMembership"
 
       override val next: Next = Next
@@ -390,8 +384,7 @@ object InnerCircleMembershipProcessApi {
       id = ElementId(TimerEventAbortAfterDeadline.ELEMENT_ID),
       elementType = BpmnElementType.BOUNDARY_EVENT,
       name = "After 3 1/2 days",
-    ), HasSuccessors<TimerEventAbortAfterDeadline.Next>, BoundaryEvent<SubProcessConfirmMembership>,
-        TimerEvent {
+    ), HasSuccessors<TimerEventAbortAfterDeadline.Next>, BoundaryEvent<SubProcessConfirmMembership>, TimerEvent {
       override val eventType: BpmnEventType = BpmnEventType.TIMER
 
       const val ELEMENT_ID: String = "timerEvent_abortAfterDeadline"
@@ -421,8 +414,7 @@ object InnerCircleMembershipProcessApi {
       id = ElementId(TimerEventResendEveryDay.ELEMENT_ID),
       elementType = BpmnElementType.BOUNDARY_EVENT,
       name = "Every day",
-    ), HasSuccessors<TimerEventResendEveryDay.Next>, BoundaryEvent<SubProcessConfirmMembership>,
-        TimerEvent {
+    ), HasSuccessors<TimerEventResendEveryDay.Next>, BoundaryEvent<SubProcessConfirmMembership>, TimerEvent {
       override val eventType: BpmnEventType = BpmnEventType.TIMER
 
       const val ELEMENT_ID: String = "timerEvent_resendEveryDay"
@@ -440,8 +432,7 @@ object InnerCircleMembershipProcessApi {
       override val next: Next = Next
 
       object Next {
-        val serviceTaskResendConfirmationMail:
-            SequenceFlows<ServiceTaskResendConfirmationMail>
+        val serviceTaskResendConfirmationMail: SequenceFlows<ServiceTaskResendConfirmationMail>
           get() = SequenceFlows.single(
             flowId = ElementId("flow_everyDayToResend"),
             target = ServiceTaskResendConfirmationMail,

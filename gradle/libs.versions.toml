@@ -46,4 +46,4 @@ kotlinJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin_vers
 kotlinKapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin_version" }
 springframework = { id = "org.springframework.boot", version.ref = "spring_version" }
 springDependency = { id = "io.spring.dependency-management", version.ref = "spring_dependency_version" }
-bpmnToCode = { id = "io.miragon.bpmn-to-code-gradle", version = "6.5.0" }
+bpmnToCode = { id = "io.miragon.bpmn-to-code-gradle", version = "6.6.1" }
