@@ -4,6 +4,14 @@ This example demonstrates how to handle **duplicate job worker executions** usin
 
 By checking if an operation has already been completed before executing business logic, this approach ensures that retried jobs don't cause duplicate side effects like sending emails multiple times or double-processing transactions.
 
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). When Zeebe hands a job to a worker, the job can arrive twice ([duplicate delivery](../../CHALLENGES.md#4-duplicate-delivery-)), or the worker finishes but its completion
+never reaches Zeebe, which then retries ([lost job completions](../../CHALLENGES.md#5-job-completion-failure-connectivity-issues-)). Without protection, the side effect runs again: a second email, a
+second claimed spot. This example records each finished operation and skips it on the retry. It does not protect the
+messages your service sends to Zeebe, see the [Outbox Pattern](../outbox-pattern/README.md) for that.
+
 ## **Overview** 🛠️
 
 The idempotency pattern consists of three main components:
@@ -20,7 +28,7 @@ The idempotency pattern consists of three main components:
 - **Atomic Pattern**: Check → Execute → Record happens in single `@Transactional` boundary
 - **Minimal Infrastructure**: Just a simple database table, no schedulers or background processes needed
 
-> **📘 Please note:** This pattern addresses **duplicate job executions** (problem #4 from distributed transaction challenges). It does NOT solve transaction coordination issues between your database and Zeebe. Combine this with After-Transaction or Outbox patterns for complete transaction safety.
+> **📘 Please note:** This pattern addresses **duplicate delivery** and **lost job completions** (challenges 4 and 5 in [CHALLENGES.md](../../CHALLENGES.md)). It does NOT solve transaction coordination issues between your database and Zeebe. Combine this with After-Transaction or Outbox patterns for complete transaction safety.
 
 ## **Code Example** 💻
 
@@ -254,7 +262,7 @@ This pattern works best **in combination** with other patterns:
 
 | Pattern Combination | What It Solves |
 |---------------------|----------------|
-| **Idempotency only** | ❌ Duplicate workers, ❌ Transaction coordination issues |
+| **Idempotency only** | ✅ Duplicate prevention, ❌ Transaction coordination issues |
 | **After-Transaction + Idempotency** | ✅ Transaction safety + ✅ Duplicate prevention |
 | **Outbox + Idempotency** | ✅ Reliable delivery + retries + ✅ Duplicate prevention |
 

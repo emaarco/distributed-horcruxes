@@ -10,8 +10,12 @@ whole round-trip safe:
 - **Idempotency** secures the **incoming** path (Zeebe → service): job workers record completed operations so that
   Zeebe's at-least-once retries never execute the same work twice.
 
-The result addresses the full spectrum of distributed-transaction problems described in
-[CHALLENGES.md](../../CHALLENGES.md).
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). The challenges show up on both sides: when the service messages Zeebe ([phantom instances](../../CHALLENGES.md#1-phantom-instance-process-runs-without-data-), [stale reads](../../CHALLENGES.md#2-premature-execution-reading-stale-data-), [overwritten data](../../CHALLENGES.md#3-premature-execution-overwriting-data-)) and when a
+worker completes a job ([duplicate delivery](../../CHALLENGES.md#4-duplicate-delivery-), [lost job completions](../../CHALLENGES.md#5-job-completion-failure-connectivity-issues-)). This example covers challenges 1 to 5. The sixth, [cancelled jobs](../../CHALLENGES.md#6-job-completion-failure-task-no-longer-available-), needs
+process modeling and compensation as in the [Saga Pattern](../saga-pattern/README.md).
 
 ## **Why Combine Them?** 🤔
 
@@ -20,9 +24,9 @@ requires solving problems on **both** sides of the boundary:
 
 | Direction | Problem | Solved by |
 |-----------|---------|-----------|
-| Service → Zeebe | Premature execution, out-of-sync states, conflicting data (#1, #2, #3) | **Outbox** |
-| Zeebe → Service | Duplicate job executions from retries (#4) | **Idempotency** |
-| Service → Zeebe | Lost / duplicate message delivery (#5, #6) | **Outbox retries + `messageId` dedup** |
+| Service → Zeebe | Phantom instances, stale reads, overwritten data (#1, #2, #3) | **Outbox** |
+| Zeebe → Service | Duplicate delivery, lost job completions (#4, #5) | **Idempotency** |
+| Service → Zeebe | Failed or repeated message sends | **Outbox retries + `messageId` dedup** |
 
 Neither pattern alone is enough for a real system. The outbox guarantees a message *eventually* reaches Zeebe even
 if delivery fails; idempotency guarantees that the worker triggered by that message runs its side effects exactly
@@ -188,5 +192,5 @@ protection against duplicate job execution. If you only need one side of the gua
 
 The combined pattern is the natural production setup: the **Outbox** guarantees that every message reliably reaches
 Zeebe as part of the business transaction, while **Idempotency** guarantees that the work triggered by those
-messages happens exactly once. Together they close all six distributed-transaction challenges in a single,
-consistent example.
+messages happens exactly once. Together they close challenges 1 to 5 in a single, consistent example; the sixth needs process
+modeling and compensation.

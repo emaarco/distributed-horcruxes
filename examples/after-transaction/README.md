@@ -4,6 +4,14 @@ This example demonstrates how to trigger Zeebe process engine interactions—suc
 processes—**only after a database transaction is successfully committed**. Using a custom transaction manager hook, we
 ensure that interactions with Zeebe remain consistent with the database state.
 
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). When the service messages Zeebe inside its transaction, the process can start on data that is rolled back
+([phantom instances](../../CHALLENGES.md#1-phantom-instance-process-runs-without-data-)) or not committed yet ([stale reads](../../CHALLENGES.md#2-premature-execution-reading-stale-data-)). This example sends the message only after the commit, which solves
+both. It does not retry a call that fails after the commit, does not address [overwritten data](../../CHALLENGES.md#3-premature-execution-overwriting-data-), and leaves
+the worker side ([duplicate delivery](../../CHALLENGES.md#4-duplicate-delivery-), [lost job completions](../../CHALLENGES.md#5-job-completion-failure-connectivity-issues-)) to the [Idempotency Pattern](../idempotency-pattern/README.md).
+
 ## **Overview** 🛠️
 
 The `ProcessTransactionManager` provided in this example hooks into Spring's transaction synchronization mechanism. It

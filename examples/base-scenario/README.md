@@ -2,7 +2,14 @@
 
 This example demonstrates **the distributed transaction problem** in its raw form, without any solution applied. This is the starting point that shows what can go wrong when coordinating database transactions with a process engine like Zeebe.
 
-> **⚠️ WARNING**: This implementation is intentionally flawed to demonstrate the problems. Use the other examples (after-transaction or outbox-pattern) for production code.
+> **⚠️ WARNING**: This implementation is intentionally flawed to demonstrate the problems. Use the other examples for production code.
+
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). This example calls Zeebe inside the database transaction and runs into [phantom instances](../../CHALLENGES.md#1-phantom-instance-process-runs-without-data-) and [stale reads](../../CHALLENGES.md#2-premature-execution-reading-stale-data-). Its "Claim
+membership" worker also fails after reserving a spot, so the retry claims a second one ([lost job completions](../../CHALLENGES.md#5-job-completion-failure-connectivity-issues-) turning into
+[duplicate delivery](../../CHALLENGES.md#4-duplicate-delivery-)).
 
 ## **Overview** 🛠️
 
@@ -64,7 +71,7 @@ class MembershipProcessAdapter(
 
 ## **What Problems Does This Cause?** 🚨
 
-### **1. Premature Execution**
+### **1. Premature Execution (Stale Reads)**
 
 The process engine starts tasks **before your database transaction is committed**.
 
@@ -77,7 +84,7 @@ The process engine starts tasks **before your database transaction is committed*
 
 - **Result**: Workers fail because they can't find the data they need, requiring retries or manual intervention.
 
-### **2. Out-of-Sync States: Engine Ahead of Database**
+### **2. Out-of-Sync States: Engine Ahead of Database (Phantom Instance)**
 
 If the database transaction **fails after notifying Zeebe**, the process engine has already started but the database has no record.
 
@@ -89,7 +96,7 @@ If the database transaction **fails after notifying Zeebe**, the process engine 
 
 - **Result**: The process engine state is completely out of sync with the database.
 
-### **3. Out-of-Sync States: Transaction Rollback After Success**
+### **3. Out-of-Sync States: Transaction Rollback After Success (Phantom Instance)**
 
 Even if both operations succeed individually, errors later in the transaction can roll back the database but not the process engine.
 
@@ -113,7 +120,7 @@ In high-throughput scenarios, workers may pick up jobs before the transaction co
 ## **How to Observe These Problems** 🔬
 
 ### **Setup**
-1. Start the infrastructure: `cd stack && docker-compose up`
+1. Start the infrastructure: `docker compose -f stack/docker-compose.yml up -d`
 2. Run this example application (port 8081)
 3. Monitor Operate at http://localhost:8080/operate (credentials: demo/demo)
 
@@ -132,7 +139,7 @@ In high-throughput scenarios, workers may pick up jobs before the transaction co
 ### **Compare with Other Solutions**
 Run the same requests against:
 - `after-transaction` example (port 8081) - See how transaction manager prevents issues
-- `outbox-pattern` example (port different) - See how outbox provides reliability
+- `outbox-pattern` example (port 8081) - See how outbox provides reliability
 
 ## **Sequence Flow** 📊
 
@@ -223,7 +230,7 @@ See the [Idempotency Pattern](../idempotency-pattern/README.md) example for how 
 
 ## **What Should You Use Instead?** ✅
 
-This repository provides two battle-tested solutions:
+This repository provides these solutions:
 
 1. **[After-Transaction Hook](../after-transaction/README.md)** ✅
    - Execute Zeebe calls only after database commit
@@ -234,6 +241,14 @@ This repository provides two battle-tested solutions:
    - Store messages in database, send asynchronously
    - Reliable with retries
    - Good for: Mission-critical operations, eventual consistency acceptable
+
+3. **[Idempotency Pattern](../idempotency-pattern/README.md)** 🔁
+   - Run retried jobs only once
+   - Good for: Duplicate deliveries and lost job completions
+
+4. **[Combined Pattern](../combined-pattern/README.md)** 🛡️
+   - Outbox and idempotency together
+   - Good for: Production services that need both sides covered
 
 ## **Conclusion**
 

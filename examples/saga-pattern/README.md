@@ -7,6 +7,15 @@ previously completed operations to keep the system consistent.
 By leveraging Zeebe's built-in compensation mechanism, the rollback logic is declared directly in the BPMN model,
 so the engine orchestrates it whenever the process takes a path that requires undoing earlier work.
 
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). Some work is already committed when a later step fails or is abandoned, and no transaction can roll it back across
+systems. A job that is cancelled while its worker is still busy ([cancelled jobs](../../CHALLENGES.md#6-job-completion-failure-task-no-longer-available-)) is the sharpest case. This example undoes
+the finished work with a compensating step. Its registration still messages Zeebe inside the transaction, like the
+[base scenario](../base-scenario/README.md), so combine it with the [Outbox Pattern](../outbox-pattern/README.md)
+against [phantom instances](../../CHALLENGES.md#1-phantom-instance-process-runs-without-data-) and [stale reads](../../CHALLENGES.md#2-premature-execution-reading-stale-data-).
+
 ## **Overview** 🛠️
 
 The saga pattern addresses the challenge of maintaining consistency across multiple operations when traditional ACID
@@ -176,7 +185,7 @@ production systems.
 
 ## **Testing the Example**
 
-1. **Start infrastructure**: `cd stack && docker-compose up`
+1. **Start infrastructure**: `docker compose -f stack/docker-compose.yml up -d`
 2. **Run the application**: Execute `ExampleApplication.kt` (port 8083)
 3. **Register**: `POST /api/memberships/register` and note the `membershipId`
 4. **Monitor in Operate**: Visit http://localhost:8080/operate (demo/demo)
@@ -188,7 +197,7 @@ production systems.
 Or run the automated scenario: `cd bruno && npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r`.
 
 > ⚠️ This process and the one of the other examples start on the same message. If a pattern example was deployed to the
-> same stack before, a registration starts both processes. Reset the stack with `docker-compose down -v` first.
+> same stack before, a registration starts both processes. Reset the stack with `docker compose -f stack/docker-compose.yml down -v` first.
 
 ## **Conclusion**
 

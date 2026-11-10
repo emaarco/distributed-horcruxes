@@ -1,157 +1,98 @@
-# 🧙‍♂️ Distributed Horcruxes
+# Distributed Horcruxes
 
-> 🚧 This repository is subject to constant change. It deals with a problem that is still rarely examined in depth in the
-> context of **remote** process engines (like Zeebe / Camunda 8).
+[![CI](https://github.com/emaarco/distributed-horcruxes/actions/workflows/pre-merge.yml/badge.svg)](https://github.com/emaarco/distributed-horcruxes/actions/workflows/pre-merge.yml)
+[![License: MIT](https://img.shields.io/github/license/emaarco/distributed-horcruxes)](LICENSE)
 
-## **Introduction** 🗂
+**Understand the distributed transaction problem between your database and Camunda 8, and fix it with patterns you can run and copy.**
 
-Distributed transactions are a common challenge in distributed systems. Whenever a single operation spans multiple
-independent systems, failures—communication issues, partial updates, timeouts—can leave those systems in contradictory
-states.
+Six runnable Kotlin examples on Spring Boot 4.1 and Camunda 8.10 reproduce the problem and fix it one pattern at a time:
+examples to learn from and copy, not a library.
 
-Much like horcruxes, distributed transactions are tricky to manage, dangerous if left unchecked, and can create chaos in
-your system if not handled properly.
+## The problem
 
-This is especially relevant when working with a **remote** process engine such as Zeebe, whose state lives in a separate
-system from your application's database. Without the right strategies, workflows can drift out of sync with your data.
-Note that this is a **trade-off, not a defect**: a remote engine exchanges coordination complexity for scalability,
-resilience, and cloud-native deployment. The same challenges appear with any external system—APIs, message brokers, or
-an embedded engine the moment it runs over the network.
+A service that saves a membership and then messages Zeebe works with two systems, each with its own commit.
+`@Transactional` coordinates only your database, and nothing coordinates the database with Zeebe, so one can succeed
+while the other fails. That is the distributed transaction problem. A remote engine brings it into every message you
+send and every job you complete:
 
-This repository provides practical examples and proven patterns to handle these problems in a Spring Boot and Zeebe
-environment.
+**When your service sends a message to Zeebe**
 
-## **The Distributed Transaction Problem** 🕵️
+1. [**Phantom instance:**](CHALLENGES.md#1-phantom-instance-process-runs-without-data-) the process starts, the commit fails, and the process runs without its data.
+2. [**Stale read:**](CHALLENGES.md#2-premature-execution-reading-stale-data-) a worker runs before the commit and does not find the data yet.
+3. [**Overwritten data:**](CHALLENGES.md#3-premature-execution-overwriting-data-) steps run out of order and overwrite each other's changes.
 
-The problem is generic in software architecture and arises when one operation spans multiple systems, such as:
+**When a worker completes a job**
 
-- A **database** for your business data.
-- A **process engine** like Zeebe for orchestrating workflows.
-- Other systems like **APIs** or **message brokers**.
+4. [**Duplicate delivery:**](CHALLENGES.md#4-duplicate-delivery-) at-least-once delivery runs the same job twice: two emails, two claimed spots.
+5. [**Lost job completion:**](CHALLENGES.md#5-job-completion-failure-connectivity-issues-) the work is committed, but the completion never reaches Zeebe, so it retries.
+6. [**Cancelled job:**](CHALLENGES.md#6-job-completion-failure-task-no-longer-available-) a boundary event cancels the job mid-work, and Zeebe rejects the completion.
 
-Within a single database, the database acts as a transaction coordinator—everything commits or rolls back together.
-Across independent systems, **no such coordinator exists**, so you can't guarantee they all succeed or fail together.
-This leads to:
+This is the price of a remote engine, not a flaw: you trade it for scalability and independent deployment.
+[CHALLENGES.md](CHALLENGES.md) walks through each challenge with sequence diagrams.
 
-- **Inconsistent states** — some systems finish their work while others fail.
-- **Duplicate actions** — retries create duplicate operations.
-- **Data conflicts** — tasks execute out of order or on incomplete data.
+## What you get
 
-A remote engine like Zeebe is itself a distributed system, designed for high availability and scalability. It manages
-its own state independently from your database, creating a boundary that must stay synchronized. The most common symptom
-is a **timing problem**: the engine assumes a task can start as soon as it's triggered, but your database transaction may
-not be committed yet—or may fail during commit.
+- **The problem, reproduced:** the base scenario runs into phantom instances, stale reads and duplicate spot claims.
+- **One pattern per module:** diff an example against the base scenario to see exactly what its pattern adds.
+- **End-to-end proof:** [Bruno](https://www.usebruno.com/) scenarios check every path against the process state in Camunda.
 
-> 💡 **Want to understand these challenges in depth?**<br/>
-> Read the [detailed breakdown of distributed transaction challenges](CHALLENGES.md)—from the general problem (ACID vs.
-> BASE) to the specific failure modes when coordinating with a remote engine, with diagrams and a reference architecture.
-> For the full narrative, see the [companion blog post](https://medium.com/p/d4bbbca295d6).
+## The examples
 
-## **How Do We Solve This?** 🛠
+Every example runs the same membership process: claim one of a few spots, confirm by email, get welcomed.
 
-These are well-known problems with well-tested solutions. They apply across distributed systems and adapt cleanly to
-Zeebe. This repository explores the following patterns:
+![Inner Circle membership process: register, claim a spot, send a confirmation mail, wait for confirmation, send a welcome mail; no spot or no confirmation leads to a rejection](assets/inner-circle-membership.png)
 
-### **1. After-Transaction Hook** ✅
+| Example                                                   | What it does                                                                 | Solves         | Trade-off                            |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------- | ------------------------------------ |
+| [Base scenario](examples/base-scenario/README.md)         | Calls Zeebe inside the transaction                                           | none, shows it | broken on purpose                    |
+| [After-transaction](examples/after-transaction/README.md) | Sends to Zeebe only after the commit                                         | 1, 2           | no retry when the call fails         |
+| [Outbox](examples/outbox-pattern/README.md)               | Stores messages in the transaction, sends them in order after the commit     | 1, 2, 3        | extra table and latency              |
+| [Idempotency](examples/idempotency-pattern/README.md)     | Records finished operations so retried jobs run once                         | 4, 5           | protects only the worker side        |
+| [Combined](examples/combined-pattern/README.md)           | Outbox outgoing, idempotency incoming                                        | 1–5            | most moving parts                    |
+| [Saga](examples/saga-pattern/README.md)                   | Revokes a committed spot claim with BPMN compensation when a member declines | helps with 6   | starts the process without an outbox |
 
-Trigger the engine only **after** the database transaction commits, avoiding notifications based on uncommitted data.
-Simple, but offers no retry if the call then fails.
+Most services want the combined pattern. No pattern fully solves challenge 6: model for it as
+[CHALLENGES.md](CHALLENGES.md#6-job-completion-failure-task-no-longer-available-) explains, and undo finished work with
+compensation like the saga example.
 
-### **2. Outbox Pattern** 📦
+## Get started
 
-Save engine messages in an "outbox" table within the **same** transaction. A background scheduler reliably delivers them
-afterwards, with retries. Reliable, at the cost of added infrastructure and slight latency.
+You need JDK 21, Node.js 22 and Docker or Podman (`podman compose`).
 
-### **3. Idempotency Pattern** 🔁
+1. Clone the repository and start Camunda 8 and PostgreSQL:
 
-Track completed operations so duplicate deliveries (at-least-once semantics) are processed only once. Uses a database
-table that records which operations have already run.
+   ```bash
+   git clone https://github.com/emaarco/distributed-horcruxes.git && cd distributed-horcruxes
+   docker compose -f stack/docker-compose.yml up -d
+   ```
 
-### **4. Combined Pattern** 🛡️
+2. Once [Operate](http://localhost:8080/operate) shows its login page, run one of the examples:
 
-Outbox **and** idempotency together—the outbox secures _your service → engine_, idempotency secures _engine → your
-service_—for end-to-end safety on both sides of the boundary.
+   ```bash
+   ./gradlew :examples:combined-pattern:bootRun   # port 8081
+   ./gradlew :examples:saga-pattern:bootRun       # port 8083
+   ```
 
-### **5. Saga Pattern** ⏪
+3. Run the Bruno scenarios and watch the instances in [Operate](http://localhost:8080/operate) as `demo` / `demo`:
 
-Handle rollbacks of already-completed work using BPMN compensation events. When a later step fails, compensation
-handlers undo previous operations.
+   ```bash
+   cd bruno
+   npx --yes @usebruno/cli@4.0.0 run . --env local --tags pattern -r   # port 8081 examples
+   npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r       # saga example
+   ```
 
-These patterns offer different trade-offs between simplicity, reliability, and performance.
+Restart the example before re-running the scenarios, its spot capacity lives in memory. Switching to or from the saga
+example needs a fresh stack: `docker compose -f stack/docker-compose.yml down -v`.
 
-## **Examples in This Repository** 📚
+## Help and feedback
 
-Each example demonstrates either the problem or a solution:
+- **In depth:** the [blog post](https://medium.com/p/d4bbbca295d6) and the [talk slides](talks/distributed-transactions.pdf).
+- **Questions and ideas:** [open an issue](https://github.com/emaarco/distributed-horcruxes/issues).
 
-- ⚠️ [**Base Scenario**](./examples/base-scenario/README.md):
-  The naive implementation that demonstrates what goes wrong without proper transaction handling.
-- ✅ [**After-Transaction Hook**](./examples/after-transaction/README.md):
-  Ensuring engine interactions occur only after the transaction commits.
-- 📦 [**Outbox Pattern**](./examples/outbox-pattern/README.md):
-  Using a database outbox and scheduler for reliable message delivery.
-- 🔁 [**Idempotency Pattern**](./examples/idempotency-pattern/README.md):
-  Preventing duplicate processing from at-least-once delivery semantics.
-- 🛡️ [**Combined Pattern**](./examples/combined-pattern/README.md):
-  Outbox + Idempotency together for end-to-end transaction safety on both sides of the boundary.
-- ⏪ [**Saga Pattern**](./examples/saga-pattern/README.md):
-  Handling distributed transaction rollbacks using BPMN compensation events.
+## Contributing
 
-## **Setup** ⚙️
+Pull requests are welcome; building and testing is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Getting started is simple. You'll need a **JDK 21+** and a container runtime (Docker or Podman).
+## License
 
-**1: Start the Infrastructure**
-
-The stack uses the consolidated **Camunda 8 orchestration cluster** (a single container bundling Zeebe, Operate, and
-Tasklist) plus PostgreSQL and Elasticsearch. Bring it up from the `stack` folder:
-
-```bash
-cd stack
-docker-compose up
-```
-
-**2: Run an Example**
-
-Each example is a standard Spring Boot application. Run its `ExampleApplication.kt` main class from your IDE, or from the
-command line:
-
-```bash
-./gradlew :examples:<pattern-name>:bootRun
-# e.g. ./gradlew :examples:outbox-pattern:bootRun
-```
-
-> ⚠️ **Run one example at a time.** All examples bind port **8081**, except the **saga-pattern** which uses **8083**.
-> Starting two on the same port will fail.
-
-**3: Interact with the Process**
-
-Each example runs the same **Inner Circle membership** process (a limited, exclusive newsletter: claim a spot, confirm
-by double opt-in, get welcomed). The [bruno](bruno) directory holds end-to-end scenarios (open them with
-[Bruno](https://www.usebruno.com/), or run them headless with the Bruno CLI):
-
-- `01-happy-path` — register, wait for the confirmation task, confirm, assert the membership is activated.
-- `02-reject-confirmation` — register, reject the confirmation, assert the membership is declined.
-- `03-no-empty-spots` — fill the remaining spots, register once more, assert the rejection path.
-- `04-saga-compensation` — the same rejection against the **saga-pattern** (port 8083), asserting that
-  "Revoke claim" ran as compensation.
-
-```bash
-cd bruno
-npx --yes @usebruno/cli@4.0.0 run . --env local --tags pattern -r   # any port-8081 example
-npx --yes @usebruno/cli@4.0.0 run . --env saga --tags saga -r       # saga-pattern
-```
-
-The scenarios assert process state through the Camunda REST API and poll instead of sleeping. They run in CI for every
-pattern module except the intentionally broken base-scenario. The spot capacity is in-memory, so restart the example
-before re-running the suite. Both process definitions start on the same message, so reset the stack
-(`docker-compose down -v`) when switching between the saga-pattern and the other examples.
-
-**4: Monitor the Processes**
-
-Monitor and debug workflows in **Operate**, served by the orchestration cluster at
-[http://localhost:8080/operate](http://localhost:8080/operate). Credentials are `demo/demo`.
-
-## **Contribute to This Project** 🤝
-
-Distributed transactions are tricky, but together we can solve them! If you have ideas, improvements, or new examples,
-feel free to open a pull request or issue.
+[MIT](LICENSE) © Marco Schäck
