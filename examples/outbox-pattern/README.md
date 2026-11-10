@@ -7,6 +7,15 @@ the messages to Zeebe.
 By decoupling message creation from message sending, this approach introduces a **retry mechanism** to handle transient
 failures and ensures message delivery consistency.
 
+## **The Problem It Solves** 🧩
+
+Your service writes to its database and talks to Zeebe, two systems with their own commits and no coordinator
+between them. That is the distributed transaction problem described in [CHALLENGES.md](../../CHALLENGES.md). When the service messages Zeebe inside its transaction, the process can start on data that is rolled back
+([phantom instances](../../CHALLENGES.md#1-phantom-instance-process-runs-without-data-)) or not committed yet ([stale reads](../../CHALLENGES.md#2-premature-execution-reading-stale-data-)), and messages can overtake each other ([overwritten data](../../CHALLENGES.md#3-premature-execution-overwriting-data-)). This example stores
+the message in the same transaction and sends it after the commit, with retries and in creation order. The order holds
+only with a single scheduler, see the note below. Retries deliver at least once, so the receiving side needs
+the [Idempotency Pattern](../idempotency-pattern/README.md) against [duplicate delivery](../../CHALLENGES.md#4-duplicate-delivery-).
+
 ## **Overview** 🛠️
 
 The outbox pattern consists of two main components:
